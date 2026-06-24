@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model PriceItem {
+  id          String   @id @default(cuid())
+  sku         String   @default("")
+  system      String   // CCTV, ACCESO, VOCEO, INCENDIO, CANALIZACION, CABLEADO, GENERAL
+  category    String   // Equipo, Accesorio, Consumible, Mano de Obra, Servicio
+  brand       String   @default("")
+  model       String   @default("")
+  description String
+  unit        String   @default("pza") // pza, ml, mts, m.l., lote, servicio, kg, rollo
+  unitCost    Float    @default(0)
+  performance  Float    @default(0) // Rendimiento: m/hr o pzs/hr para mano de obra
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Estimate {
+  id               String   @id @default(cuid())
+  name             String   @default("Sin nombre")
+  clientName       String   @default("")
+  projectName      String   @default("")
+  currency         String   @default("MXN") // MXN, USD
+  // Calculation factors
+  wasteFactorCable       Float @default(0.10)       // 10% desperdicio cable
+  wasteFactorConduit     Float @default(0.15)       // 15% desperdicio canalización
+  verticalDrop           Float @default(3.0)        // metros bajada vertical promedio
+  rackAllowance          Float @default(5.0)        // metros holgura en rack
+  indirectFactor         Float @default(0.12)       // 12% indirectos
+  utilityFactor          Float @default(0.15)       // 15% utilidad
+  // System configs stored as JSON strings
+  cctvConfig             String   @default("{}")
+  accessConfig           String   @default("{}")
+  pagingConfig           String   @default("{}")
+  fireConfig             String   @default("{}")
+  // Results
+  lineItems              String   @default("[]")     // JSON array of calculated line items
+  subtotalMaterials      Float    @default(0)
+  subtotalLabor          Float    @default(0)
+  subtotalEngineering    Float    @default(0)
+  subtotalDirect         Float    @default(0)
+  subtotalIndirects      Float    @default(0)
+  subtotalUtility        Float    @default(0)
+  grandTotal             Float    @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
