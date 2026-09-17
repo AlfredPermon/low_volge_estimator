@@ -1,0 +1,11 @@
+# Checklist
+- [ ] La tabla de Presupuesto se visualiza sin desbordamiento horizontal en un viewport de escritorio típico.
+- [ ] La columna "Descripción" mantiene un ancho equilibrado y no expande el layout por textos largos.
+- [ ] Los textos largos en "Descripción" se muestran truncados con puntos suspensivos.
+- [ ] El texto completo se muestra únicamente bajo interacción (hover, foco o clic) y se oculta al perder interacción.
+- [ ] Navegación por teclado: el tooltip se activa al enfocar la celda y se desactiva al perder foco.
+- [ ] No quedan overlays/tooltip persistentes tras mouseleave, blur o scroll.
+- [ ] La solución es responsiva y mantiene legibilidad en pantallas más angostas sin overflow horizontal.
+- [x] `npm test` pasa.
+- [x] `npx tsc --noEmit` pasa (sin errores TypeScript).
+- [x] `npm run lint` / ESLint pasa (sin errores).

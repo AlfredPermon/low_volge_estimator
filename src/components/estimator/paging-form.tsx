@@ -39,27 +39,30 @@ export default function PagingForm() {
   const config = useEstimateStore((s) => s.pagingConfig);
   const setPagingConfig = useEstimateStore((s) => s.setPagingConfig);
 
-  const totalSpeakers = config.speakers.reduce((sum, s) => sum + s.qty, 0);
+  // Defensa contra `speakers` indefinido al cargar un presupuesto antiguo.
+  const speakers = Array.isArray(config?.speakers) ? config.speakers : [];
+
+  const totalSpeakers = speakers.reduce((sum, s) => sum + (s?.qty ?? 0), 0);
 
   const updateSpeaker = (index: number, field: keyof SpeakerEntry, value: string | number) => {
-    const speakers = config.speakers.map((s, i) =>
+    const updated = speakers.map((s, i) =>
       i === index ? { ...s, [field]: value } : s,
     );
-    setPagingConfig({ ...config, speakers });
+    setPagingConfig({ ...config, speakers: updated });
   };
 
   const addSpeaker = () => {
     setPagingConfig({
       ...config,
-      speakers: [...config.speakers, { type: SPEAKER_TYPES[0], qty: 0 }],
+      speakers: [...speakers, { type: SPEAKER_TYPES[0], qty: 0 }],
     });
   };
 
   const removeSpeaker = (index: number) => {
-    if (config.speakers.length <= 1) return;
+    if (speakers.length <= 1) return;
     setPagingConfig({
       ...config,
-      speakers: config.speakers.filter((_, i) => i !== index),
+      speakers: speakers.filter((_, i) => i !== index),
     });
   };
 
@@ -104,7 +107,7 @@ export default function PagingForm() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-            {config.speakers.map((speaker, index) => (
+            {speakers.map((speaker, index) => (
               <div key={index} className="flex items-end gap-3">
                 <div className="flex-1 space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Tipo de Bocina</Label>
@@ -141,7 +144,7 @@ export default function PagingForm() {
                   variant="ghost"
                   size="icon"
                   onClick={() => removeSpeaker(index)}
-                  disabled={config.speakers.length <= 1}
+                  disabled={speakers.length <= 1}
                   className="mb-0 shrink-0 text-muted-foreground hover:text-red-600 hover:bg-red-50"
                   aria-label="Eliminar bocina"
                 >

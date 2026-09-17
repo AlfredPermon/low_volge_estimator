@@ -198,3 +198,25 @@ Stage Summary:
 - All lint checks pass cleanly
 - Backend was pre-built; focus was on complete frontend implementation
 - Key architectural decisions: Zustand for state (direct store usage, no local copies), shadcn/ui components, emerald/teal color scheme
+
+## 2026-07-24 — Package Distribution & Safe Database Preservation Update Pattern
+
+### Key Improvements & Architecture for Portable App Packaging:
+
+1. **Anti-Overwrite Strategy (`db/seed_custom.db`)**:
+   - Instead of packaging pristine initial databases directly as `db/custom.db` in the distribution ZIP, the initial database template is packaged as `db/seed_custom.db`.
+   - Extracting a new distribution package into an existing app directory will **never** overwrite an existing user database (`db/custom.db`).
+
+2. **Interactive Upgrade vs. Clean Installation**:
+   - `install.bat` (Windows) and `install.sh` (Linux/macOS) detect if an existing `db/custom.db` is present:
+     - **Option 1 (Update & Preserve)**: Automatically creates a timestamped backup (`db/custom.db.bak_YYYYMMDD_HHMMSS`) and keeps the user's active database intact with all captured data.
+     - **Option 2 (Clean Install)**: Generates a preventive backup and restores the default catalog from `db/seed_custom.db`.
+   - If `db/custom.db` does not exist (new installation), the installer initializes `db/custom.db` from `db/seed_custom.db`.
+
+3. **Auto-healing Startup Scripts (`start.bat` / `start.sh`)**:
+   - `start.bat` and `start.sh` automatically calculate absolute file paths for Prisma/SQLite SQLite URL (`file:C:/path/to/db/custom.db`).
+   - If `db/custom.db` is missing upon startup, `start.bat`/`start.sh` automatically copies `db/seed_custom.db` -> `db/custom.db` before starting the server.
+
+4. **Standalone Packaging Automation (`make-dist.ps1`)**:
+   - PowerShell build script automates free disk checks, Next.js standalone build verification, bundling of `.next/standalone`, `.next/static`, `public`, `node_modules`, seed data, database templates, batch/bash installers, and ZIP compression.
+

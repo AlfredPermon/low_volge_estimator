@@ -132,7 +132,7 @@ log_step_end "bun run db:push"
 
 log_step_start "Starting Next.js dev server"
 echo "[BUN] Starting development server..."
-bun run dev &
+npm run dev &
 DEV_PID=$!
 log_step_end "Starting Next.js dev server"
 
