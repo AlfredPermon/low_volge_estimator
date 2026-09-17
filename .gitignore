@@ -1,56 +1,132 @@
+```
 # Dependencies
-/node_modules/
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+node_modules/
 
-# Testing reports
-/coverage/
+# Environment variables
+.env
+.env.local
+*.env.*
 
-# Next.js
-/.next/
-/out/
+# Logs
+*.log
 
-# Production
-/build/
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
 
-# Miscellaneous
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS generated files
 .DS_Store
-*.pem
+Thumbs.db
 
-# Debug logs
+# Build outputs
+dist/
+build/
+target/
+*.out
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+.eggs/
+
+# Node.js specific
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-*.log
-dev.log
-dev.out.log
-server.log
 
-# Environment variables and credentials
-.env*
-!.env.example
+# Compiled JavaScript
+*.min.js
+*.bundle.js
 
-# Vercel
-.vercel/
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
+# Backup files
+*~
+*.bak
+*.backup
 
-# Local configuration
-local-*
-.claude/
-.z-ai-config
+# Compression
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
 
-# Local development files
-/test/
-/prompt/
+# Testing
+.mypy_cache/
+.pytest_cache/
+.jest/
+.nyc_output/
+coverage/
 
-# Skills directory
-/skills/
+# Authentication
+.id_rsa
+.id_dsa
+*.key
+
+# Documentation
+.sphinx/
+docs/_build/
+
+# Gradle
+.gradle/
+
+# Maven
+.mvn/
+bin/
+
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Ruby
+*.gem
+.bundle/
+vendor/bundle/
+
+# Rust
+Cargo.lock
+
+# Julia
+.julia/
+
+# Zig
+zig-cache/
+zig-out/
+
+# Temporary files
+tmp/
+temp/
+.DS_Store
+```
