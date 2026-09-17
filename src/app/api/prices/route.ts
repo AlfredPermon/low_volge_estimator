@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, ensureDatabaseSchema } from "@/lib/db";
+import { getSessionUser, hasPermission } from "@/lib/auth";
 import { z } from "zod";
-
-// ─── Zod schemas ────────────────────────────────────────────────────────────
 
 const createPriceItemSchema = z.object({
   sku: z.string().default(""),
@@ -14,6 +13,15 @@ const createPriceItemSchema = z.object({
   unit: z.string().default("pza"),
   unitCost: z.number().min(0).default(0),
   performance: z.number().min(0).default(0),
+  deviceType: z.string().default(""),
+  provider: z.string().default(""),
+  certifications: z.string().default(""),
+  datasheetUrl: z.string().default(""),
+  notes: z.string().default(""),
+  crewTechnician: z.number().min(0).default(0),
+  crewOfficer: z.number().min(0).default(0),
+  crewHelper: z.number().min(0).default(0),
+  laborHours: z.number().min(0).default(0),
   active: z.boolean().default(true),
 });
 
@@ -21,6 +29,12 @@ const createPriceItemSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    await ensureDatabaseSchema();
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const system = searchParams.get("system");
     const category = searchParams.get("category");
@@ -70,6 +84,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDatabaseSchema();
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    if (!hasPermission(user.role, 'SUPERVISOR')) {
+      return NextResponse.json({ error: "Se requieren permisos de Supervisor o Administrador para crear precios en el catálogo" }, { status: 403 });
+    }
+
     const body = await request.json();
     const parsed = createPriceItemSchema.safeParse(body);
 
@@ -80,7 +104,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const item = await db.priceItem.create({ data: parsed.data });
+    const item = await db.priceItem.create({
+      data: {
+        ...parsed.data,
+        userId: user.id,
+      },
+    });
+
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
     console.error("Error creating price item:", error);

@@ -1,0 +1,9 @@
+var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/estimates/[id]/route.js")
+R.c("server/chunks/[root-of-the-server]__191czn4._.js")
+R.c("server/chunks/node_modules_next_dist_esm_build_templates_app-route_17fbc_g.js")
+R.c("server/chunks/[root-of-the-server]__0xuaoik._.js")
+R.c("server/chunks/node_modules_zod_v4_classic_external_1-pw2v2.js")
+R.c("server/chunks/src_lib_calculator_ts_0e8-k3n._.js")
+R.c("server/chunks/_next-internal_server_app_api_estimates_[id]_route_actions_0_3nmw1.js")
+R.m(2363)
+module.exports=R.m(2363).exports
