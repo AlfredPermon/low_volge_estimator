@@ -1,0 +1,753 @@
+     1→// ─── Types ───────────────────────────────────────────────────────────────────
+     2→
+     3→export type SystemName = "CCTV" | "ACCESO" | "VOCEO" | "INCENDIO" | "CANALIZACION" | "CABLEADO" | "GENERAL";
+     4→
+     5→export interface CameraEntry {
+     6→  type: string;
+     7→  qty: number;
+     8→  hasPoE: boolean;
+     9→}
+    10→
+    11→export interface CctvConfig {
+    12→  cameras: CameraEntry[];
+    13→  nvr: { qty: number; bays: number; storageTB: number; disksPerBay: number };
+    14→  avgDistanceMeters: number;
+    15→  licenses: number;
+    16→}
+    17→
+    18→export interface AccessConfig {
+    19→  doors: number;
+    20→  readerType: string;
+    21→  controllers: number;
+    22→  turnstiles: number;
+    23→  magneticLocks: number;
+    24→  exitButtons: number;
+    25→  touchlessButtons: number;
+    26→  avgDistanceMeters: number;
+    27→  softwareLicenses: number;
+    28→}
+    29→
+    30→export interface SpeakerEntry {
+    31→  type: string;
+    32→  qty: number;
+    33→}
+    34→
+    35→export interface PagingConfig {
+    36→  speakers: SpeakerEntry[];
+    37→  amplifiers: { qty: number; watts: number };
+    38→  zones: number;
+    39→  gateways: number;
+    40→  avgDistanceMeters: number;
+    41→  bluetoothSpeakers: number;
+    42→}
+    43→
+    44→export interface FireConfig {
+    45→  smokeDetectors: number;
+    46→  heatDetectors: number;
+    47→  manualStations: number;
+    48→  strobes: number;
+    49→  hornStrobes: number;
+    50→  coDetectors: number;
+    51→  panels: { qty: number; loops: number };
+    52→  annunciators: number;
+    53→  avgDistanceMeters: number;
+    54→}
+    55→
+    56→export interface EstimateFactors {
+    57→  wasteFactorCable: number;
+    58→  wasteFactorConduit: number;
+    59→  verticalDrop: number;
+    60→  rackAllowance: number;
+    61→  indirectFactor: number;
+    62→  utilityFactor: number;
+    63→}
+    64→
+    65→export interface LineItem {
+    66→  partida: string;
+    67→  code: string;
+    68→  description: string;
+    69→  unit: string;
+    70→  quantity: number;
+    71→  unitCost: number;
+    72→  totalAmount: number;
+    73→  system: SystemName;
+    74→  category: string;
+    75→  isEstimated?: boolean;
+    76→}
+    77→
+    78→export interface SystemBreakdown {
+    79→  materials: number;
+    80→  labor: number;
+    81→  engineering: number;
+    82→  services: number;
+    83→  lineItems: LineItem[];
+    84→}
+    85→
+    86→export interface CalculationResult {
+    87→  systems: Record<string, SystemBreakdown>;
+    88→  subtotalMaterials: number;
+    89→  subtotalLabor: number;
+    90→  subtotalEngineering: number;
+    91→  subtotalServices: number;
+    92→  subtotalDirect: number;
+    93→  subtotalIndirects: number;
+    94→  subtotalUtility: number;
+    95→  grandTotal: number;
+    96→  lineItems: LineItem[];
+    97→}
+    98→
+    99→export interface PriceItemRecord {
+   100→  id: string;
+   101→  sku: string;
+   102→  system: string;
+   103→  category: string;
+   104→  brand: string;
+   105→  model: string;
+   106→  description: string;
+   107→  unit: string;
+   108→  unitCost: number;
+   109→  performance: number;
+   110→  active: boolean;
+   111→}
+   112→
+   113→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   114→
+   115→function round2(n: number): number {
+   116→  return Math.round(n * 100) / 100;
+   117→}
+   118→
+   119→function matchPriceItem(
+   120→  items: PriceItemRecord[],
+   121→  system: string,
+   122→  category: string,
+   123→  keywords: string[]
+   124→): PriceItemRecord | null {
+   125→  const lowered = keywords.map((k) => k.toLowerCase());
+   126→  return (
+   127→    items.find((item) => {
+   128→      if (item.system !== system) return false;
+   129→      if (category && item.category !== category) return false;
+   130→      const desc = item.description.toLowerCase();
+   131→      return lowered.some((kw) => desc.includes(kw));
+   132→    }) ?? null
+   133→  );
+   134→}
+   135→
+   136→function makeLineItem(
+   137→  idx: number,
+   138→  systemPrefix: string,
+   139→  system: SystemName,
+   140→  code: string,
+   141→  description: string,
+   142→  unit: string,
+   143→  quantity: number,
+   144→  unitCost: number,
+   145→  category: string = "Equipo",
+   146→  isEstimated = false
+   147→): LineItem {
+   148→  return {
+   149→    partida: `${systemPrefix}.${String(idx).padStart(2, "0")}`,
+   150→    code,
+   151→    description,
+   152→    unit,
+   153→    quantity: round2(quantity),
+   154→    unitCost: round2(unitCost),
+   155→    totalAmount: round2(quantity * unitCost),
+   156→    system,
+   157→    category,
+   158→    isEstimated,
+   159→  };
+   160→}
+   161→
+   162→function sumLineItems(items: LineItem[]): { materials: number; labor: number; engineering: number; services: number } {
+   163→  let materials = 0;
+   164→  let labor = 0;
+   165→  let engineering = 0;
+   166→  let services = 0;
+   167→  for (const item of items) {
+   168→    const amt = item.totalAmount;
+   169→    if (item.category === "Mano de Obra") labor += amt;
+   170→    else if (item.category === "Servicio") services += amt;
+   171→    else if (item.category === "Ingeniería") engineering += amt;
+   172→    else materials += amt;
+   173→  }
+   174→  return { materials: round2(materials), labor: round2(labor), engineering: round2(engineering), services: round2(services) };
+   175→}
+   176→
+   177→// ─── System Calculators ──────────────────────────────────────────────────────
+   178→
+   179→export function calculateCCTV(
+   180→  config: CctvConfig,
+   181→  factors: EstimateFactors,
+   182→  priceItems: PriceItemRecord[]
+   183→): SystemBreakdown {
+   184→  const items: LineItem[] = [];
+   185→  let idx = 1;
+   186→
+   187→  // Total camera count
+   188→  const totalCameras = config.cameras.reduce((sum, c) => sum + c.qty, 0);
+   189→
+   190→  // Cable calculation for cameras
+   191→  const cableLength = round2(
+   192→    (config.avgDistanceMeters + factors.verticalDrop + factors.rackAllowance) * totalCameras * (1 + factors.wasteFactorCable)
+   193→  );
+   194→
+   195→  // Conduit calculation for cameras
+   196→  const conduitLength = round2(config.avgDistanceMeters * totalCameras * (1 + factors.wasteFactorConduit));
+   197→
+   198→  // --- Cameras ---
+   199→  for (const cam of config.cameras) {
+   200→    const typeLower = cam.type.toLowerCase();
+   201→    const keywords: string[] = [];
+   202→    if (typeLower.includes("bullet")) keywords.push("bullet");
+   203→    else if (typeLower.includes("domo") || typeLower.includes("dome")) keywords.push("domo");
+   204→    else if (typeLower.includes("ptz")) keywords.push("ptz");
+   205→    else if (typeLower.includes("fisheye")) keywords.push("fisheye");
+   206→
+   207→    const matched = matchPriceItem(priceItems, "CCTV", "Equipo", keywords);
+   208→    const unitCost = matched?.unitCost ?? getEstimatedCost("cctv_camera_" + typeLower);
+   209→
+   210→    items.push(
+   211→      makeLineItem(
+   212→        idx++, "5.7.3", "CCTV", `CCTV-CAM-${String(idx).padStart(3, "0")}`,
+   213→        `Cámara IP ${cam.type} ${cam.hasPoE ? "PoE" : ""} exterior 5MP`,
+   214→        "pza", cam.qty, unitCost, "Equipo", !matched
+   215→      )
+   216→    );
+   217→  }
+   218→
+   219→  // --- NVR ---
+   220→  const nvrMatch = matchPriceItem(priceItems, "CCTV", "Equipo", ["NVR", "grabador"]);
+   221→  const nvrCost = nvrMatch?.unitCost ?? getEstimatedCost("cctv_nvr");
+   222→  items.push(
+   223→    makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-NVR-001", `NVR ${config.nvr.bays} bahías`, "pza", config.nvr.qty, nvrCost, "Equipo", !nvrMatch)
+   224→  );
+   225→
+   226→  // --- Storage Disks ---
+   227→  const totalDisks = config.nvr.bays * config.nvr.disksPerBay;
+   228→  const diskMatch = matchPriceItem(priceItems, "CCTV", "Equipo", ["disco", "disco duro", "HDD", "almacenamiento"]);
+   229→  const diskCost = diskMatch?.unitCost ?? getEstimatedCost("cctv_disk");
+   230→  if (totalDisks > 0) {
+   231→    items.push(
+   232→      makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-DISK-001", `Disco duro ${config.nvr.storageTB}TB para NVR`, "pza", totalDisks, diskCost, "Equipo", !diskMatch)
+   233→    );
+   234→  }
+   235→
+   236→  // --- Licenses ---
+   237→  if (config.licenses > 0) {
+   238→    const licMatch = matchPriceItem(priceItems, "CCTV", "Equipo", ["licencia", "license"]);
+   239→    const licCost = licMatch?.unitCost ?? getEstimatedCost("cctv_license");
+   240→    items.push(
+   241→      makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-LIC-001", "Licencia de cámara IP adicional", "pza", config.licenses, licCost, "Equipo", !licMatch)
+   242→    );
+   243→  }
+   244→
+   245→  // --- Cable UTP ---
+   246→  const cableMatch = matchPriceItem(priceItems, "CABLEADO", "Equipo", ["UTP", "cable UTP", "cable Cat"]);
+   247→  const cableCost = cableMatch?.unitCost ?? getEstimatedCost("cable_utp");
+   248→  items.push(
+   249→    makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-CAB-001", "Cable UTP Cat6 para CCTV", "ml", cableLength, cableCost, "Equipo", !cableMatch)
+   250→  );
+   251→
+   252→  // --- Conduit ---
+   253→  const conduitMatch = matchPriceItem(priceItems, "CANALIZACION", "Equipo", ["conduit", "tubo"]);
+   254→  const conduitCost = conduitMatch?.unitCost ?? getEstimatedCost("conduit");
+   255→  items.push(
+   256→    makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-CON-001", "Conduit 3/4\" para CCTV", "ml", conduitLength, conduitCost, "Equipo", !conduitMatch)
+   257→  );
+   258→
+   259→  // --- Conduit fittings (codo, cople) ---
+   260→  const fittingCount = Math.ceil(conduitLength / 3);
+   261→  const codoMatch = matchPriceItem(priceItems, "CANALIZACION", "Accesorio", ["codo"]);
+   262→  const codoCost = codoMatch?.unitCost ?? getEstimatedCost("codo");
+   263→  if (fittingCount > 0) {
+   264→    items.push(
+   265→      makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-CODO-001", "Codo conduit 3/4\" 90°", "pza", fittingCount, codoCost, "Accesorio", !codoMatch)
+   266→    );
+   267→  }
+   268→
+   269→  const copleMatch = matchPriceItem(priceItems, "CANALIZACION", "Accesorio", ["cople"]);
+   270→  const copleCost = copleMatch?.unitCost ?? getEstimatedCost("cople");
+   271→  if (fittingCount > 0) {
+   272→    items.push(
+   273→      makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-COPL-001", "Cople conduit 3/4\"", "pza", fittingCount, copleCost, "Accesorio", !copleMatch)
+   274→    );
+   275→  }
+   276→
+   277→  // --- Labor ---
+   278→  const laborMatch = matchPriceItem(priceItems, "CCTV", "Mano de Obra", ["mano de obra", "instalación"]);
+   279→  const laborCost = laborMatch?.unitCost ?? getEstimatedCost("labor_cctv");
+   280→  items.push(
+   281→    makeLineItem(idx++, "5.7.3", "CCTV", "CCTV-MO-001", "Instalación de sistema CCTV (mano de obra)", "lote", 1, laborCost * totalCameras, "Mano de Obra", !laborMatch)
+   282→  );
+   283→
+   284→  const sums = sumLineItems(items);
+   285→  return { ...sums, lineItems: items };
+   286→}
+   287→
+   288→export function calculateAccess(
+   289→  config: AccessConfig,
+   290→  factors: EstimateFactors,
+   291→  priceItems: PriceItemRecord[]
+   292→): SystemBreakdown {
+   293→  const items: LineItem[] = [];
+   294→  let idx = 1;
+   295→
+   296→  const totalDevices = config.doors + config.controllers + config.turnstiles + config.magneticLocks + config.exitButtons + config.touchlessButtons;
+   297→
+   298→  // Cable
+   299→  const cableLength = round2(
+   300→    (config.avgDistanceMeters + factors.verticalDrop + factors.rackAllowance) * totalDevices * (1 + factors.wasteFactorCable)
+   301→  );
+   302→
+   303→  // Conduit
+   304→  const conduitLength = round2(config.avgDistanceMeters * totalDevices * (1 + factors.wasteFactorConduit));
+   305→
+   306→  // --- Readers / Terminals ---
+   307→  const readerMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["lectora", "terminal", "reconocimiento", "biometrica"]);
+   308→  const readerCost = readerMatch?.unitCost ?? getEstimatedCost("access_reader");
+   309→  items.push(
+   310→    makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-TER-001", `Terminal de acceso ${config.readerType}`, "pza", config.doors, readerCost, "Equipo", !readerMatch)
+   311→  );
+   312→
+   313→  // --- Controllers ---
+   314→  const ctrlMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["controlador"]);
+   315→  const ctrlCost = ctrlMatch?.unitCost ?? getEstimatedCost("access_controller");
+   316→  items.push(
+   317→    makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-CTR-001", "Controlador de acceso de 2 puertas", "pza", config.controllers, ctrlCost, "Equipo", !ctrlMatch)
+   318→  );
+   319→
+   320→  // --- Turnstiles ---
+   321→  if (config.turnstiles > 0) {
+   322→    const tsMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["torniquete"]);
+   323→    const tsCost = tsMatch?.unitCost ?? getEstimatedCost("access_turnstile");
+   324→    items.push(
+   325→      makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-TSR-001", "Torniquete de acceso", "pza", config.turnstiles, tsCost, "Equipo", !tsMatch)
+   326→    );
+   327→  }
+   328→
+   329→  // --- Magnetic Locks ---
+   330→  const lockMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["cerradura", "chapa", "magnética"]);
+   331→  const lockCost = lockMatch?.unitCost ?? getEstimatedCost("access_magnetic_lock");
+   332→  items.push(
+   333→    makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-LOC-001", "Cerradura magnética 280kg", "pza", config.magneticLocks, lockCost, "Equipo", !lockMatch)
+   334→  );
+   335→
+   336→  // --- Exit Buttons ---
+   337→  if (config.exitButtons > 0) {
+   338→    const btnMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["botón", "pulsador"]);
+   339→    const btnCost = btnMatch?.unitCost ?? getEstimatedCost("access_exit_button");
+   340→    items.push(
+   341→      makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-BTN-001", "Botón de salida", "pza", config.exitButtons, btnCost, "Equipo", !btnMatch)
+   342→    );
+   343→  }
+   344→
+   345→  // --- Touchless Buttons ---
+   346→  if (config.touchlessButtons > 0) {
+   347→    const tlMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["touchless", "sin contacto"]);
+   348→    const tlCost = tlMatch?.unitCost ?? getEstimatedCost("access_touchless_button");
+   349→    items.push(
+   350→      makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-TLB-001", "Botón sin contacto (touchless)", "pza", config.touchlessButtons, tlCost, "Equipo", !tlMatch)
+   351→    );
+   352→  }
+   353→
+   354→  // --- Software Licenses ---
+   355→  if (config.softwareLicenses > 0) {
+   356→    const swMatch = matchPriceItem(priceItems, "ACCESO", "Equipo", ["software", "licencia"]);
+   357→    const swCost = swMatch?.unitCost ?? getEstimatedCost("access_software");
+   358→    items.push(
+   359→      makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-SW-001", "Licencia de software de acceso", "pza", config.softwareLicenses, swCost, "Equipo", !swMatch)
+   360→    );
+   361→  }
+   362→
+   363→  // --- Cable ---
+   364→  const cableMatch = matchPriceItem(priceItems, "CABLEADO", "Equipo", ["UTP", "cable UTP", "cable Cat"]);
+   365→  const cableCost = cableMatch?.unitCost ?? getEstimatedCost("cable_utp");
+   366→  items.push(
+   367→    makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-CAB-001", "Cable UTP Cat6 para control de acceso", "ml", cableLength, cableCost, "Equipo", !cableMatch)
+   368→  );
+   369→
+   370→  // --- Conduit ---
+   371→  const conduitMatch = matchPriceItem(priceItems, "CANALIZACION", "Equipo", ["conduit", "tubo"]);
+   372→  const conduitCost = conduitMatch?.unitCost ?? getEstimatedCost("conduit");
+   373→  items.push(
+   374→    makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-CON-001", "Conduit 3/4\" para control de acceso", "ml", conduitLength, conduitCost, "Equipo", !conduitMatch)
+   375→  );
+   376→
+   377→  // --- Conduit fittings ---
+   378→  const fittingCount = Math.ceil(conduitLength / 3);
+   379→  const codoMatch = matchPriceItem(priceItems, "CANALIZACION", "Accesorio", ["codo"]);
+   380→  const codoCost = codoMatch?.unitCost ?? getEstimatedCost("codo");
+   381→  if (fittingCount > 0) {
+   382→    items.push(
+   383→      makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-CODO-001", "Codo conduit 3/4\" 90°", "pza", fittingCount, codoCost, "Accesorio", !codoMatch)
+   384→    );
+   385→  }
+   386→
+   387→  // --- Labor ---
+   388→  const laborMatch = matchPriceItem(priceItems, "ACCESO", "Mano de Obra", ["mano de obra", "instalación"]);
+   389→  const laborCost = laborMatch?.unitCost ?? getEstimatedCost("labor_access");
+   390→  items.push(
+   391→    makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-MO-001", "Instalación de sistema de control de acceso (mano de obra)", "lote", 1, laborCost * totalDevices, "Mano de Obra", !laborMatch)
+   392→  );
+   393→
+   394→  const sums = sumLineItems(items);
+   395→  return { ...sums, lineItems: items };
+   396→}
+   397→
+   398→export function calculatePaging(
+   399→  config: PagingConfig,
+   400→  factors: EstimateFactors,
+   401→  priceItems: PriceItemRecord[]
+   402→): SystemBreakdown {
+   403→  const items: LineItem[] = [];
+   404→  let idx = 1;
+   405→
+   406→  const totalSpeakers = config.speakers.reduce((s, sp) => s + sp.qty, 0) + config.bluetoothSpeakers;
+   407→  const totalDevices = totalSpeakers + config.amplifiers.qty + config.gateways;
+   408→
+   409→  // Cable
+   410→  const cableLength = round2(
+   411→    (config.avgDistanceMeters + factors.verticalDrop + factors.rackAllowance) * totalDevices * (1 + factors.wasteFactorCable)
+   412→  );
+   413→
+   414→  // Conduit
+   415→  const conduitLength = round2(config.avgDistanceMeters * totalDevices * (1 + factors.wasteFactorConduit));
+   416→
+   417→  // --- Speakers ---
+   418→  for (const sp of config.speakers) {
+   419→    const typeLower = sp.type.toLowerCase();
+   420→    const keywords: string[] = [];
+   421→    if (typeLower.includes("exterior")) keywords.push("exterior", "bafle", "protección");
+   422→    else if (typeLower.includes("colgante")) keywords.push("colgante", "techo");
+   423→    else if (typeLower.includes("ip")) keywords.push("ip", "altavoz ip");
+   424→
+   425→    const matched = matchPriceItem(priceItems, "VOCEO", "Equipo", keywords);
+   426→    const cost = matched?.unitCost ?? getEstimatedCost("paging_speaker_" + typeLower);
+   427→    items.push(
+   428→      makeLineItem(idx++, "5.7.5", "VOCEO", `VOC-SPK-${String(idx).padStart(3, "0")}`, `Altavoz ${sp.type} para sistema de voceo`, "pza", sp.qty, cost, "Equipo", !matched)
+   429→    );
+   430→  }
+   431→
+   432→  // --- Bluetooth Speakers ---
+   433→  if (config.bluetoothSpeakers > 0) {
+   434→    const btMatch = matchPriceItem(priceItems, "VOCEO", "Equipo", ["bluetooth", "inalámbrico"]);
+   435→    const btCost = btMatch?.unitCost ?? getEstimatedCost("paging_speaker_bluetooth");
+   436→    items.push(
+   437→      makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-BT-001", "Altavoz bluetooth", "pza", config.bluetoothSpeakers, btCost, "Equipo", !btMatch)
+   438→    );
+   439→  }
+   440→
+   441→  // --- Amplifiers ---
+   442→  const ampMatch = matchPriceItem(priceItems, "VOCEO", "Equipo", ["amplificador"]);
+   443→  const ampCost = ampMatch?.unitCost ?? getEstimatedCost("paging_amplifier");
+   444→  items.push(
+   445→    makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-AMP-001", `Amplificador ${config.amplifiers.watts}W para voceo`, "pza", config.amplifiers.qty, ampCost, "Equipo", !ampMatch)
+   446→  );
+   447→
+   448→  // --- Gateways ---
+   449→  const gwMatch = matchPriceItem(priceItems, "VOCEO", "Equipo", ["gateway", "pasarela"]);
+   450→  const gwCost = gwMatch?.unitCost ?? getEstimatedCost("paging_gateway");
+   451→  items.push(
+   452→    makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-GW-001", "Gateway VoIP para voceo", "pza", config.gateways, gwCost, "Equipo", !gwMatch)
+   453→  );
+   454→
+   455→  // --- Cable ---
+   456→  const cableMatch = matchPriceItem(priceItems, "CABLEADO", "Equipo", ["UTP", "cable UTP", "cable Cat"]);
+   457→  const cableCost = cableMatch?.unitCost ?? getEstimatedCost("cable_utp");
+   458→  items.push(
+   459→    makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-CAB-001", "Cable UTP Cat6 para voceo", "ml", cableLength, cableCost, "Equipo", !cableMatch)
+   460→  );
+   461→
+   462→  // --- Speaker wire (alternating) ---
+   463→  const speakerWireLength = round2(cableLength * 0.5); // speaker wire only for analog portions
+   464→  const spkWireMatch = matchPriceItem(priceItems, "CABLEADO", "Equipo", ["parlante", "altavoz", "bocina", "speaker wire"]);
+   465→  const spkWireCost = spkWireMatch?.unitCost ?? getEstimatedCost("cable_speaker");
+   466→  items.push(
+   467→    makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-SWK-001", "Cable para altavoz", "ml", speakerWireLength, spkWireCost, "Equipo", !spkWireMatch)
+   468→  );
+   469→
+   470→  // --- Conduit ---
+   471→  const conduitMatch = matchPriceItem(priceItems, "CANALIZACION", "Equipo", ["conduit", "tubo"]);
+   472→  const conduitCost = conduitMatch?.unitCost ?? getEstimatedCost("conduit");
+   473→  items.push(
+   474→    makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-CON-001", "Conduit 3/4\" para voceo", "ml", conduitLength, conduitCost, "Equipo", !conduitMatch)
+   475→  );
+   476→
+   477→  // --- Conduit fittings ---
+   478→  const fittingCount = Math.ceil(conduitLength / 3);
+   479→  const codoMatch = matchPriceItem(priceItems, "CANALIZACION", "Accesorio", ["codo"]);
+   480→  const codoCost = codoMatch?.unitCost ?? getEstimatedCost("codo");
+   481→  if (fittingCount > 0) {
+   482→    items.push(
+   483→      makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-CODO-001", "Codo conduit 3/4\" 90°", "pza", fittingCount, codoCost, "Accesorio", !codoMatch)
+   484→    );
+   485→  }
+   486→
+   487→  // --- Labor ---
+   488→  const laborMatch = matchPriceItem(priceItems, "VOCEO", "Mano de Obra", ["mano de obra", "instalación"]);
+   489→  const laborCost = laborMatch?.unitCost ?? getEstimatedCost("labor_paging");
+   490→  items.push(
+   491→    makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-MO-001", "Instalación de sistema de voceo (mano de obra)", "lote", 1, laborCost * totalDevices, "Mano de Obra", !laborMatch)
+   492→  );
+   493→
+   494→  const sums = sumLineItems(items);
+   495→  return { ...sums, lineItems: items };
+   496→}
+   497→
+   498→export function calculateFire(
+   499→  config: FireConfig,
+   500→  factors: EstimateFactors,
+   501→  priceItems: PriceItemRecord[]
+   502→): SystemBreakdown {
+   503→  const items: LineItem[] = [];
+   504→  let idx = 1;
+   505→
+   506→  const totalDevices =
+   507→    config.smokeDetectors +
+   508→    config.heatDetectors +
+   509→    config.manualStations +
+   510→    config.strobes +
+   511→    config.hornStrobes +
+   512→    config.coDetectors;
+   513→
+   514→  // Cable
+   515→  const cableLength = round2(
+   516→    (config.avgDistanceMeters + factors.verticalDrop + factors.rackAllowance) * totalDevices * (1 + factors.wasteFactorCable)
+   517→  );
+   518→
+   519→  // Conduit
+   520→  const conduitLength = round2(config.avgDistanceMeters * totalDevices * (1 + factors.wasteFactorConduit));
+   521→
+   522→  // --- Smoke Detectors ---
+   523→  if (config.smokeDetectors > 0) {
+   524→    const match = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["humo", "detector", "smoke"]);
+   525→    const cost = match?.unitCost ?? getEstimatedCost("fire_smoke_detector");
+   526→    items.push(
+   527→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-SMK-001", "Detector de humo fotoeléctrico", "pza", config.smokeDetectors, cost, "Equipo", !match)
+   528→    );
+   529→  }
+   530→
+   531→  // --- Heat Detectors ---
+   532→  if (config.heatDetectors > 0) {
+   533→    const match = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["temperatura", "calor", "heat"]);
+   534→    const cost = match?.unitCost ?? getEstimatedCost("fire_heat_detector");
+   535→    items.push(
+   536→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-HEAT-001", "Detector de temperatura", "pza", config.heatDetectors, cost, "Equipo", !match)
+   537→    );
+   538→  }
+   539→
+   540→  // --- Manual Stations ---
+   541→  if (config.manualStations > 0) {
+   542→    const match = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["estación manual", "pulsador", "manual"]);
+   543→    const cost = match?.unitCost ?? getEstimatedCost("fire_manual_station");
+   544→    items.push(
+   545→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-MS-001", "Estación manual de alarma", "pza", config.manualStations, cost, "Equipo", !match)
+   546→    );
+   547→  }
+   548→
+   549→  // --- Strobes ---
+   550→  if (config.strobes > 0) {
+   551→    const match = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["estroboscópica", "estrobo", "strobe"]);
+   552→    const cost = match?.unitCost ?? getEstimatedCost("fire_strobe");
+   553→    items.push(
+   554→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-STR-001", "Lámpara estroboscópica", "pza", config.strobes, cost, "Equipo", !match)
+   555→    );
+   556→  }
+   557→
+   558→  // --- Horn Strobes ---
+   559→  if (config.hornStrobes > 0) {
+   560→    const match = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["horn strobe", "campana", "sirena"]);
+   561→    const cost = match?.unitCost ?? getEstimatedCost("fire_horn_strobe");
+   562→    items.push(
+   563→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-HS-001", "Dispositivo audible/visible (horn strobe)", "pza", config.hornStrobes, cost, "Equipo", !match)
+   564→    );
+   565→  }
+   566→
+   567→  // --- CO Detectors ---
+   568→  if (config.coDetectors > 0) {
+   569→    const match = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["CO", "monóxido", "carbono"]);
+   570→    const cost = match?.unitCost ?? getEstimatedCost("fire_co_detector");
+   571→    items.push(
+   572→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-CO-001", "Detector de monóxido de carbono", "pza", config.coDetectors, cost, "Equipo", !match)
+   573→    );
+   574→  }
+   575→
+   576→  // --- Panels ---
+   577→  const panelMatch = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["panel", "central"]);
+   578→  const panelCost = panelMatch?.unitCost ?? getEstimatedCost("fire_panel");
+   579→  items.push(
+   580→    makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-PNL-001", `Panel de alarma contra incendio ${config.panels.loops} lazos`, "pza", config.panels.qty, panelCost, "Equipo", !panelMatch)
+   581→  );
+   582→
+   583→  // --- Annunciators ---
+   584→  if (config.annunciators > 0) {
+   585→    const annMatch = matchPriceItem(priceItems, "INCENDIO", "Equipo", ["anunciador", "indicador"]);
+   586→    const annCost = annMatch?.unitCost ?? getEstimatedCost("fire_annunciator");
+   587→    items.push(
+   588→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-ANN-001", "Anunciador remoto", "pza", config.annunciators, annCost, "Equipo", !annMatch)
+   589→    );
+   590→  }
+   591→
+   592→  // --- Cable FPLR ---
+   593→  const fplrMatch = matchPriceItem(priceItems, "CABLEADO", "Equipo", ["FPLR", "fire", "incendio", "resistente al fuego"]);
+   594→  const fplrCost = fplrMatch?.unitCost ?? getEstimatedCost("cable_fplr");
+   595→  items.push(
+   596→    makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-CAB-001", "Cable FPLR para sistema contra incendio", "ml", cableLength, fplrCost, "Equipo", !fplrMatch)
+   597→  );
+   598→
+   599→  // --- Conduit ---
+   600→  const conduitMatch = matchPriceItem(priceItems, "CANALIZACION", "Equipo", ["conduit", "tubo"]);
+   601→  const conduitCost = conduitMatch?.unitCost ?? getEstimatedCost("conduit");
+   602→  items.push(
+   603→    makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-CON-001", "Conduit 3/4\" para sistema contra incendio", "ml", conduitLength, conduitCost, "Equipo", !conduitMatch)
+   604→  );
+   605→
+   606→  // --- Conduit fittings ---
+   607→  const fittingCount = Math.ceil(conduitLength / 3);
+   608→  const codoMatch = matchPriceItem(priceItems, "CANALIZACION", "Accesorio", ["codo"]);
+   609→  const codoCost = codoMatch?.unitCost ?? getEstimatedCost("codo");
+   610→  if (fittingCount > 0) {
+   611→    items.push(
+   612→      makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-CODO-001", "Codo conduit 3/4\" 90°", "pza", fittingCount, codoCost, "Accesorio", !codoMatch)
+   613→    );
+   614→  }
+   615→
+   616→  // --- Labor ---
+   617→  const laborMatch = matchPriceItem(priceItems, "INCENDIO", "Mano de Obra", ["mano de obra", "instalación"]);
+   618→  const laborCost = laborMatch?.unitCost ?? getEstimatedCost("labor_fire");
+   619→  items.push(
+   620→    makeLineItem(idx++, "5.7.6", "INCENDIO", "FIR-MO-001", "Instalación de sistema contra incendio (mano de obra)", "lote", 1, laborCost * totalDevices, "Mano de Obra", !laborMatch)
+   621→  );
+   622→
+   623→  const sums = sumLineItems(items);
+   624→  return { ...sums, lineItems: items };
+   625→}
+   626→
+   627→// ─── Estimated costs (fallback when no DB match) ────────────────────────────
+   628→
+   629→function getEstimatedCost(key: string): number {
+   630→  const costs: Record<string, number> = {
+   631→    cctv_camera_bullet: 7805.18,
+   632→    cctv_camera_domo: 8210.45,
+   633→    cctv_camera_ptz: 28500.0,
+   634→    cctv_camera_fisheye: 15200.0,
+   635→    cctv_nvr: 45600.0,
+   636→    cctv_disk: 5200.0,
+   637→    cctv_license: 850.0,
+   638→    cable_utp: 28.5,
+   639→    cable_fplr: 42.0,
+   640→    cable_speaker: 18.0,
+   641→    conduit: 38.5,
+   642→    codo: 15.0,
+   643→    cople: 12.0,
+   644→    conector: 22.0,
+   645→    soporte: 65.0,
+   646→    caja: 185.0,
+   647→    tapa: 95.0,
+   648→    flexible_plica: 45.0,
+   649→    labor_cctv: 450.0,
+   650→    labor_access: 380.0,
+   651→    labor_paging: 350.0,
+   652→    labor_fire: 420.0,
+   653→    access_reader: 9800.0,
+   654→    access_controller: 12500.0,
+   655→    access_turnstile: 35000.0,
+   656→    access_magnetic_lock: 2850.0,
+   657→    access_exit_button: 285.0,
+   658→    access_touchless_button: 650.0,
+   659→    access_software: 2200.0,
+   660→    paging_speaker_exterior: 3200.0,
+   661→    paging_speaker_colgante: 2800.0,
+   662→    paging_speaker_ip: 5500.0,
+   663→    paging_speaker_bluetooth: 4200.0,
+   664→    paging_amplifier: 8500.0,
+   665→    paging_gateway: 12000.0,
+   666→    fire_smoke_detector: 1450.0,
+   667→    fire_heat_detector: 1200.0,
+   668→    fire_manual_station: 680.0,
+   669→    fire_strobe: 850.0,
+   670→    fire_horn_strobe: 1150.0,
+   671→    fire_co_detector: 2800.0,
+   672→    fire_panel: 68000.0,
+   673→    fire_annunciator: 8500.0,
+   674→  };
+   675→  return costs[key] ?? 1000.0;
+   676→}
+   677→
+   678→// ─── Main Calculation Function ───────────────────────────────────────────────
+   679→
+   680→export function runCalculation(params: {
+   681→  cctvConfig?: CctvConfig;
+   682→  accessConfig?: AccessConfig;
+   683→  pagingConfig?: PagingConfig;
+   684→  fireConfig?: FireConfig;
+   685→  factors: EstimateFactors;
+   686→  priceItems: PriceItemRecord[];
+   687→}): CalculationResult {
+   688→  const { cctvConfig, accessConfig, pagingConfig, fireConfig, factors, priceItems } = params;
+   689→
+   690→  const systems: Record<string, SystemBreakdown> = {};
+   691→  const allLineItems: LineItem[] = [];
+   692→
+   693→  if (cctvConfig && cctvConfig.cameras?.length > 0) {
+   694→    systems["CCTV"] = calculateCCTV(cctvConfig, factors, priceItems);
+   695→    allLineItems.push(...systems["CCTV"].lineItems);
+   696→  }
+   697→
+   698→  if (accessConfig && accessConfig.doors > 0) {
+   699→    systems["ACCESO"] = calculateAccess(accessConfig, factors, priceItems);
+   700→    allLineItems.push(...systems["ACCESO"].lineItems);
+   701→  }
+   702→
+   703→  if (pagingConfig && (pagingConfig.speakers?.length > 0 || pagingConfig.bluetoothSpeakers > 0)) {
+   704→    systems["VOCEO"] = calculatePaging(pagingConfig, factors, priceItems);
+   705→    allLineItems.push(...systems["VOCEO"].lineItems);
+   706→  }
+   707→
+   708→  if (fireConfig && (fireConfig.smokeDetectors > 0 || fireConfig.heatDetectors > 0 || fireConfig.manualStations > 0)) {
+   709→    systems["INCENDIO"] = calculateFire(fireConfig, factors, priceItems);
+   710→    allLineItems.push(...systems["INCENDIO"].lineItems);
+   711→  }
+   712→
+   713→  // Add general/service items from price items
+   714→  const serviceItems = priceItems.filter(
+   715→    (pi) => pi.system === "GENERAL" && pi.category === "Servicio" && pi.active
+   716→  );
+   717→  const generalLineItems: LineItem[] = [];
+   718→  serviceItems.forEach((si, i) => {
+   719→    generalLineItems.push(
+   720→      makeLineItem(
+   721→        i + 1, "5.7.0", "GENERAL", `SRV-${String(i + 1).padStart(3, "0")}`,
+   722→        si.description, si.unit, 1, si.unitCost, "Servicio"
+   723→      )
+   724→    );
+   725→  });
+   726→  if (generalLineItems.length > 0) {
+   727→    systems["GENERAL"] = { ...sumLineItems(generalLineItems), lineItems: generalLineItems };
+   728→    allLineItems.push(...generalLineItems);
+   729→  }
+   730→
+   731→  const subtotalMaterials = round2(allLineItems.filter((i) => i.category === "Equipo" || i.category === "Accesorio" || i.category === "Consumible").reduce((s, i) => s + i.totalAmount, 0));
+   732→  const subtotalLabor = round2(allLineItems.filter((i) => i.category === "Mano de Obra").reduce((s, i) => s + i.totalAmount, 0));
+   733→  const subtotalEngineering = round2(allLineItems.filter((i) => i.category === "Ingeniería").reduce((s, i) => s + i.totalAmount, 0));
+   734→  const subtotalServices = round2(allLineItems.filter((i) => i.category === "Servicio").reduce((s, i) => s + i.totalAmount, 0));
+   735→
+   736→  const subtotalDirect = round2(subtotalMaterials + subtotalLabor + subtotalEngineering + subtotalServices);
+   737→  const subtotalIndirects = round2(subtotalDirect * factors.indirectFactor);
+   738→  const subtotalUtility = round2((subtotalDirect + subtotalIndirects) * factors.utilityFactor);
+   739→  const grandTotal = round2(subtotalDirect + subtotalIndirects + subtotalUtility);
+   740→
+   741→  return {
+   742→    systems,
+   743→    subtotalMaterials,
+   744→    subtotalLabor,
+   745→    subtotalEngineering,
+   746→    subtotalServices,
+   747→    subtotalDirect,
+   748→    subtotalIndirects,
+   749→    subtotalUtility,
+   750→    grandTotal,
+   751→    lineItems: allLineItems,
+   752→  };
+   753→}

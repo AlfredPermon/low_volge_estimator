@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/schedule/engineering/[id]/download": {},
+    "/api/schedule/engineering/upload": {}
+  }
+}

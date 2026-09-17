@@ -1,0 +1,270 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "onMatchHeaders": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/estimates/[id]",
+      "regex": "^/api/estimates/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/estimates/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/estimates/[id]/calculate",
+      "regex": "^/api/estimates/([^/]+?)/calculate(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/estimates/(?<nxtPid>[^/]+?)/calculate(?:/)?$"
+    },
+    {
+      "page": "/api/estimates/[id]/history",
+      "regex": "^/api/estimates/([^/]+?)/history(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/estimates/(?<nxtPid>[^/]+?)/history(?:/)?$"
+    },
+    {
+      "page": "/api/prices/[id]",
+      "regex": "^/api/prices/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/prices/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/prices/[id]/history",
+      "regex": "^/api/prices/([^/]+?)/history(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/prices/(?<nxtPid>[^/]+?)/history(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/activity/[id]",
+      "regex": "^/api/schedule/activity/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/schedule/activity/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/blockers/[id]",
+      "regex": "^/api/schedule/blockers/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/schedule/blockers/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/engineering/[id]/download",
+      "regex": "^/api/schedule/engineering/([^/]+?)/download(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/schedule/engineering/(?<nxtPid>[^/]+?)/download(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/milestones/[id]",
+      "regex": "^/api/schedule/milestones/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/schedule/milestones/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/users/[id]",
+      "regex": "^/api/users/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/users/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api",
+      "regex": "^/api(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api(?:/)?$"
+    },
+    {
+      "page": "/api/auth/login",
+      "regex": "^/api/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/login(?:/)?$"
+    },
+    {
+      "page": "/api/auth/logout",
+      "regex": "^/api/auth/logout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/logout(?:/)?$"
+    },
+    {
+      "page": "/api/auth/me",
+      "regex": "^/api/auth/me(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/me(?:/)?$"
+    },
+    {
+      "page": "/api/auth/seed-admin",
+      "regex": "^/api/auth/seed\\-admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/seed\\-admin(?:/)?$"
+    },
+    {
+      "page": "/api/estimates",
+      "regex": "^/api/estimates(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/estimates(?:/)?$"
+    },
+    {
+      "page": "/api/prices",
+      "regex": "^/api/prices(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices(?:/)?$"
+    },
+    {
+      "page": "/api/prices/clear",
+      "regex": "^/api/prices/clear(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/clear(?:/)?$"
+    },
+    {
+      "page": "/api/prices/duplicates",
+      "regex": "^/api/prices/duplicates(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/duplicates(?:/)?$"
+    },
+    {
+      "page": "/api/prices/export",
+      "regex": "^/api/prices/export(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/export(?:/)?$"
+    },
+    {
+      "page": "/api/prices/import",
+      "regex": "^/api/prices/import(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/import(?:/)?$"
+    },
+    {
+      "page": "/api/prices/models",
+      "regex": "^/api/prices/models(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/models(?:/)?$"
+    },
+    {
+      "page": "/api/prices/seed-defaults",
+      "regex": "^/api/prices/seed\\-defaults(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/seed\\-defaults(?:/)?$"
+    },
+    {
+      "page": "/api/prices/sku-next",
+      "regex": "^/api/prices/sku\\-next(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/sku\\-next(?:/)?$"
+    },
+    {
+      "page": "/api/prices/template",
+      "regex": "^/api/prices/template(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/template(?:/)?$"
+    },
+    {
+      "page": "/api/schedule",
+      "regex": "^/api/schedule(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/schedule(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/blockers",
+      "regex": "^/api/schedule/blockers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/schedule/blockers(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/engineering/upload",
+      "regex": "^/api/schedule/engineering/upload(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/schedule/engineering/upload(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/milestones",
+      "regex": "^/api/schedule/milestones(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/schedule/milestones(?:/)?$"
+    },
+    {
+      "page": "/api/users",
+      "regex": "^/api/users(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/users(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}
