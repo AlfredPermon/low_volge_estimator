@@ -1,0 +1,3 @@
+{
+  "/api/auth/seed-admin/route": "app/api/auth/seed-admin/route.js"
+}
