@@ -129,4 +129,20 @@ zig-out/
 tmp/
 temp/
 .DS_Store
+# Temporary files
+tmp/
+temp/
+.DS_Store
+
+# Next.js generated files
+.next/
+out/
+
+# TypeScript generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel/
+
 ```
