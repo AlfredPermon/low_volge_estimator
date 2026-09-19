@@ -256,6 +256,15 @@ export default function Home() {
           laborOfficerRate: state.factors.laborRates.officer,
           laborHelperRate: state.factors.laborRates.helper,
           useCrewBasedLabor: state.factors.useCrewBasedLabor,
+          cctvConfig: JSON.stringify(state.cctvConfig),
+          accessConfig: JSON.stringify(state.accessConfig),
+          pagingConfig: JSON.stringify(state.pagingConfig),
+          fireConfig: JSON.stringify(state.fireConfig),
+          floorplanConfig: JSON.stringify({
+            buildingLevels: state.buildingLevels,
+            activeFloorplanId: state.activeFloorplanId,
+            floorplans: state.floorplans,
+          }),
         };
 
         const res = await fetch('/api/estimates', {

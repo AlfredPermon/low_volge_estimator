@@ -653,7 +653,18 @@ export function normalizeFloorplanState(raw: unknown): {
   activeFloorplanId: string;
   floorplanConfig: FloorplanItem;
 } {
-  const base = raw as any;
+  let base: any = raw;
+  if (typeof base === "string") {
+    try {
+      base = JSON.parse(base);
+      if (typeof base === "string") {
+        base = JSON.parse(base);
+      }
+    } catch {
+      // Ignorar error si no es un JSON parseable válido
+    }
+  }
+
   const buildingLevels: BuildingLevel[] = Array.isArray(base?.buildingLevels) && base.buildingLevels.length > 0
     ? base.buildingLevels.map((lvl: any, idx: number) => ({
         id: String(lvl.id || `level_${idx + 1}`),
@@ -680,7 +691,7 @@ export function normalizeFloorplanState(raw: unknown): {
     };
   }
 
-  const single = normalizeFloorplanItem(raw, "fp_1", "Planta Baja");
+  const single = normalizeFloorplanItem(base, "fp_1", "Planta Baja");
   return {
     buildingLevels,
     floorplans: [single],

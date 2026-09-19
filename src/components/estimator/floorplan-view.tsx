@@ -287,6 +287,8 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
       // 1. Extintores / Extinguisher
       if (
         n.includes('extinguish') ||
+        n.includes('extinguis') ||
+        n.includes('extinguiser') ||
         n.includes('extingus') ||
         n.includes('extinguer') ||
         n.includes('extintor') ||
