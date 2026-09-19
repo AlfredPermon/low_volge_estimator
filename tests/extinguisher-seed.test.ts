@@ -163,10 +163,10 @@ describe('Extinguisher Seed — Validación Normativa Hospitalaria (NOM-002, NOM
 
   it('Catálogo Predefinido Comercial: incluye insumos estándar con precios y SKUs', () => {
     assert.ok(EXTINGUISHER_CATALOG.length >= 5);
-    const co2Item = EXTINGUISHER_CATALOG.find((c) => c.sku === 'EXT-CO2-5LBS');
+    const co2Item = EXTINGUISHER_CATALOG.find((c) => c.sku === 'EXT-CO2-4.5KG');
     assert.ok(co2Item);
     assert.strictEqual(co2Item.type, 'CO2');
-    assert.strictEqual(co2Item.unitCost, 3250.0);
+    assert.strictEqual(co2Item.unitCost, 4000.0);
   });
 
   it('NOM-002-STPS-2010: Valida distancias entre extintores adaptándose a la escala calibrada', () => {
@@ -251,5 +251,59 @@ describe('Extinguisher Seed — Validación Normativa Hospitalaria (NOM-002, NOM
     assert.strictEqual(dev.extinguisherData?.capacity, '6.0kg');
     assert.strictEqual(dev.x, 150);
     assert.strictEqual(dev.y, 250);
+  });
+
+  it('Persistencia Store: normalizeFloorplanState deserializa correctamente cadenas JSON simples y doblemente escapadas', async () => {
+    const { normalizeFloorplanState } = await import('../src/store/estimate-store');
+
+    const rawObject = {
+      activeFloorplanId: 'fp_extinguisher_1',
+      floorplans: [
+        {
+          id: 'fp_extinguisher_1',
+          name: 'EXTINGUISHER Nivel 2',
+          levelId: 'level_n2',
+          scaleMetersPerPx: 0.05,
+          racks: [],
+          devices: [
+            {
+              id: 'ext_co2_quirofano',
+              system: 'extinguisher',
+              subType: 'CO2 5lbs',
+              x: 400,
+              y: 500,
+              extinguisherData: {
+                type: 'CO2',
+                capacity: '5lbs',
+                riskZone: 'HIGH_RISK',
+                mountingHeight: 1.50,
+                signalingHeight: 1.90,
+                coverageRadiusMeters: 15.0,
+                hasSignaling: true,
+                medicalArea: 'quirofano',
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    // 1. Prueba con JSON String simple
+    const jsonString = JSON.stringify(rawObject);
+    const normSimple = normalizeFloorplanState(jsonString);
+    assert.strictEqual(normSimple.floorplans.length, 1);
+    assert.strictEqual(normSimple.floorplans[0].name, 'EXTINGUISHER Nivel 2');
+    assert.strictEqual(normSimple.floorplans[0].devices.length, 1);
+    assert.strictEqual(normSimple.floorplans[0].devices[0].system, 'extinguisher');
+    assert.strictEqual(normSimple.floorplans[0].devices[0].extinguisherData?.type, 'CO2');
+
+    // 2. Prueba con JSON String doblemente escapado
+    const doubleJsonString = JSON.stringify(jsonString);
+    const normDouble = normalizeFloorplanState(doubleJsonString);
+    assert.strictEqual(normDouble.floorplans.length, 1);
+    assert.strictEqual(normDouble.floorplans[0].name, 'EXTINGUISHER Nivel 2');
+    assert.strictEqual(normDouble.floorplans[0].devices.length, 1);
+    assert.strictEqual(normDouble.floorplans[0].devices[0].system, 'extinguisher');
+    assert.strictEqual(normDouble.floorplans[0].devices[0].extinguisherData?.type, 'CO2');
   });
 });
