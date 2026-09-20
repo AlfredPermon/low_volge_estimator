@@ -22,6 +22,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
   Table,
@@ -505,17 +506,21 @@ export default function PricesView() {
   // =========================================================================
 
   return (
-    <>
-      <Card className="w-full border border-emerald-200/60">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+    >
+      <Card className="w-full border border-emerald-500/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xl rounded-xl overflow-hidden transition-all">
         {/* ---- Header ------------------------------------------------------ */}
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 bg-gradient-to-r from-emerald-50/50 via-white/40 to-slate-50/30 dark:from-slate-800/40 dark:to-slate-900/40">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                <Database className="h-5 w-5 text-emerald-700" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-500/20">
+                <Database className="h-5 w-5 text-white" />
               </div>
               <div className="flex items-center gap-2.5">
-                <CardTitle className="text-xl font-semibold text-emerald-900">
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-emerald-900 via-teal-800 to-slate-800 dark:from-emerald-300 dark:to-white bg-clip-text text-transparent">
                   Base de Datos de Precios
                 </CardTitle>
                 {pagination.total > 0 && (
@@ -1151,7 +1156,7 @@ export default function PricesView() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </motion.div>
   );
 }
 
