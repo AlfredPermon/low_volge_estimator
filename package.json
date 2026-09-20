@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "setup:staging": "node scripts/setup-staging.js",
+    "dev:staging": "node scripts/setup-staging.js && next dev -p 3001",
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",

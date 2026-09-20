@@ -10,6 +10,7 @@
  */
 
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   PieChart,
   Pie,
@@ -124,7 +125,12 @@ export default function AnalyticsView() {
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
       <div>
         <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-emerald-600" />
@@ -460,6 +466,6 @@ export default function AnalyticsView() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </motion.div>
   );
 }

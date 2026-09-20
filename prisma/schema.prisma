@@ -65,6 +65,11 @@ model PriceItem {
   history        PriceHistory[]
 
   @@index([userId])
+  @@index([system])
+  @@index([category])
+  @@index([sku])
+  @@index([active])
+  @@index([system, active])
 }
 
 /// C3 - Historial de cambios en el costo unitario (TASK §18.3, §14.7)
@@ -135,6 +140,7 @@ model Estimate {
   history                EstimateHistory[]
 
   @@index([userId])
+  @@index([updatedAt])
 }
 
 /// Historial de modificaciones y auditoría por presupuesto
