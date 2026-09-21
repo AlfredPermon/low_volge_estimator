@@ -3,6 +3,7 @@ export const SYSTEMS = [
   'ACCESO',
   'VOCEO',
   'INCENDIO',
+  'EXTINTOR',
   'CANALIZACION',
   'CABLEADO',
   'GENERAL',
@@ -51,7 +52,7 @@ export const DEVICE_TYPES = [
   'paging_speaker_bluetooth',
   'paging_amplifier',
   'paging_gateway',
-  // INCENDIO
+  // INCENDIO & EXTINCIÓN
   'fire_smoke_detector',
   'fire_heat_detector',
   'fire_manual_station',
@@ -60,6 +61,7 @@ export const DEVICE_TYPES = [
   'fire_co_detector',
   'fire_panel',
   'fire_annunciator',
+  'fire_extinguisher',
   // CABLEADO
   'cable_utp',
   'cable_utp_spool',
@@ -140,6 +142,7 @@ export const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   fire_co_detector: 'Detector de Monóxido (CO)',
   fire_panel: 'Panel de Incendio',
   fire_annunciator: 'Anunciador Remoto',
+  fire_extinguisher: 'Extintor / Equipo de Protección',
   // CABLEADO
   cable_utp: 'Cable UTP',
   cable_utp_spool: 'Bobina/Caja UTP (305m)',

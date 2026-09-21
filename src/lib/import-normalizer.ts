@@ -46,6 +46,13 @@ const SYSTEM_SYNONYMS: Record<string, string> = {
   "alarma": "INCENDIO",
   "alarmas": "INCENDIO",
   "fire": "INCENDIO",
+  // EXTINTOR
+  extintor: "EXTINTOR",
+  extintores: "EXTINTOR",
+  "extintor / extintores": "EXTINTOR",
+  "proteccion contra incendio": "EXTINTOR",
+  "protección contra incendio": "EXTINTOR",
+  ext: "EXTINTOR",
   // CANALIZACION
   canalizacion: "CANALIZACION",
   "canalización": "CANALIZACION",

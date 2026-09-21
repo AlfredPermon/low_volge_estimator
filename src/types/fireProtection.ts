@@ -1,8 +1,23 @@
 import { z } from 'zod';
 
-export type ExtinguisherType = 'CO2' | 'CLEAN_AGENT' | 'WATER_PRESSURIZED' | 'PQS_ABC' | 'CLASS_K';
+export type ExtinguisherType = 'PQS_ABC' | 'CO2' | 'CLEAN_AGENT' | 'WATER_PRESSURIZED' | 'AFFF' | 'CLASS_K';
 
-export type ExtinguisherCapacity = '2.5kg' | '4.5kg' | '6.0kg' | '10kg' | '5lbs' | '10lbs' | '6L' | '9.5L' | '9.0L';
+export type ExtinguisherCapacity =
+  | '2.5kg'
+  | '4.5kg'
+  | '4.6kg'
+  | '6.0kg'
+  | '9.0kg'
+  | '10kg'
+  | '10.0kg'
+  | '5lbs'
+  | '10lbs'
+  | '6L'
+  | '10L'
+  | '6.0L'
+  | '9.5L'
+  | '9.0L'
+  | '10.0L';
 
 export type HospitalRiskZone = 'HIGH_RISK' | 'ORDINARY_RISK';
 
@@ -26,23 +41,30 @@ export interface ExtinguisherDevice {
 // ─── Zod Schemas for Validation ─────────────────────────────────────────────
 
 export const ExtinguisherTypeSchema = z.enum([
+  'PQS_ABC',
   'CO2',
   'CLEAN_AGENT',
   'WATER_PRESSURIZED',
-  'PQS_ABC',
+  'AFFF',
   'CLASS_K',
 ]);
 
 export const ExtinguisherCapacitySchema = z.enum([
   '2.5kg',
   '4.5kg',
+  '4.6kg',
   '6.0kg',
+  '9.0kg',
   '10kg',
+  '10.0kg',
   '5lbs',
   '10lbs',
   '6L',
+  '10L',
+  '6.0L',
   '9.5L',
   '9.0L',
+  '10.0L',
 ]);
 
 export const HospitalRiskZoneSchema = z.enum(['HIGH_RISK', 'ORDINARY_RISK']);

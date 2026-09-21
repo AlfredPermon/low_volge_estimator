@@ -344,3 +344,299 @@ export function exportBudgetToPDF(
   doc.save(filename);
   return filename;
 }
+
+export interface ExtinguisherPdfItem {
+  sku: string;
+  name: string;
+  type: string;
+  capacity: string;
+  count: number;
+  unitCost: number;
+  totalAmount: number;
+  medicalArea: string;
+}
+
+export interface ExtinguisherPdfMetadata {
+  projectName?: string;
+  clientName?: string;
+  responsible?: string;
+  revision?: string;
+  currency?: "MXN" | "USD";
+  subtotalAmount: number;
+  ivaRate: number;
+  ivaAmount: number;
+  totalWithIva: number;
+  totalCount: number;
+  validCount: number;
+}
+
+/**
+ * Genera el reporte PDF paramétrico oficial de extintores en el formato estandarizado "Tecnologías de Seguridad".
+ */
+export function exportExtinguisherReportToPDF(
+  items: ExtinguisherPdfItem[],
+  meta: ExtinguisherPdfMetadata
+): string {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const rightX = pageW - margin;
+  const currency = meta.currency || "MXN";
+  let y = margin;
+
+  // ─── Header Principal (GESTION DE RIESGOS Y CONTROL)
+  doc.setFillColor(0, 32, 96); // Azul marino oficial (#002060)
+  doc.rect(0, 0, pageW, 22, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("GESTION DE RIESGOS Y CONTROL", margin, 11);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Paramétrico Extintores", margin, 17);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(meta.revision || "Rev. 1", rightX, 11, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Presupuesto Paramétrico", rightX, 17, { align: "right" });
+
+  y = 30;
+
+  // ─── Bloque de Información del Proyecto
+  doc.setTextColor(40, 40, 40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(meta.projectName || "Estimación Paramétrica de Extintores", margin, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Cliente: ${meta.clientName || "Cliente General"}`, margin, y);
+  y += 4;
+  doc.text(`Proyecto: ${meta.projectName || "Estimación General"}`, margin, y);
+  y += 4;
+  doc.text(`Responsable: ${meta.responsible || "Ing. Responsable de Proyecto"}`, margin, y);
+  y += 4;
+  doc.text(`Moneda: ${currency}`, margin, y);
+  y += 7;
+
+  // ─── Posicionamiento de Columnas
+  const COL_PARTIDA  = margin + 1;      // x=15
+  const COL_MARCA    = margin + 22;     // x=36
+  const COL_MODELO   = margin + 42;     // x=56
+  const COL_DESC     = margin + 66;     // x=80
+  const COL_UN       = margin + 118;    // x=132
+  const COL_CANT     = margin + 134;    // x=148
+  const COL_PU       = margin + 156;    // x=170
+  const COL_IMPORTE  = rightX;          // right edge
+
+  const drawTableHeader = (yPos: number): number => {
+    doc.setFillColor(176, 196, 222); // Steel blue tenue (#B0C4DE)
+    doc.rect(margin, yPos - 4, pageW - margin * 2, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Partida",     COL_PARTIDA, yPos);
+    doc.text("Marca",       COL_MARCA,   yPos);
+    doc.text("Modelo",      COL_MODELO,  yPos);
+    doc.text("Descripción", COL_DESC,    yPos);
+    doc.text("Un",          COL_UN,      yPos);
+    doc.text("Cant",        COL_CANT,    yPos, { align: "right" });
+    doc.text("P.U.",        COL_PU,      yPos, { align: "right" });
+    doc.text("Importe",     COL_IMPORTE, yPos, { align: "right" });
+    return yPos + 4;
+  };
+
+  const ensureSpace = (needed: number): void => {
+    if (y + needed > pageH - 45) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // ─── Franja de Sistema Extintores
+  ensureSpace(20);
+  doc.setFillColor(176, 196, 222);
+  doc.rect(margin, y - 4, pageW - margin * 2, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 32, 96);
+  doc.text("5.7.6 Sistema Extintores & Protección Contra Incendio", margin + 1, y + 1);
+  doc.text(formatCurrency(meta.subtotalAmount, currency), rightX, y + 1, { align: "right" });
+  y += 6;
+
+  y = drawTableHeader(y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+
+  const ensureRowSpace = (needed: number): void => {
+    if (y + needed > pageH - 45) {
+      doc.addPage();
+      y = margin;
+      y = drawTableHeader(y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(40, 40, 40);
+    }
+  };
+
+  // ─── Renderizado de Filas
+  items.forEach((item, index) => {
+    doc.setFontSize(7.5);
+
+    const partidaText = `5.7.6.${String(index + 1).padStart(2, "0")}`;
+    const marcaText = item.sku.includes("ANSUL") ? "ANSUL" : item.sku.includes("AMEREX") ? "AMEREX" : "GENÉRICO";
+    const modeloText = item.sku;
+    const descText = `${item.name} [Área: ${item.medicalArea || "General"}]`;
+
+    const widthPartida = COL_MARCA - COL_PARTIDA - 1;
+    const widthMarca = COL_MODELO - COL_MARCA - 1;
+    const widthModelo = COL_DESC - COL_MODELO - 1;
+    const widthDesc = COL_UN - COL_DESC - 1;
+
+    const partidaLines = doc.splitTextToSize(partidaText, widthPartida);
+    const marcaLines = doc.splitTextToSize(marcaText, widthMarca);
+    const modeloLines = doc.splitTextToSize(modeloText, widthModelo);
+    const descLines = doc.splitTextToSize(descText, widthDesc);
+
+    const maxLines = Math.max(1, partidaLines.length, marcaLines.length, modeloLines.length, descLines.length);
+    const lineHeight = 3.6;
+    const rowGap = 1.0;
+    const rowHeight = maxLines * lineHeight + rowGap;
+
+    ensureRowSpace(rowHeight);
+
+    for (let i = 0; i < maxLines; i++) {
+      const yy = y + i * lineHeight;
+      if (partidaLines[i]) doc.text(String(partidaLines[i]), COL_PARTIDA, yy);
+      if (marcaLines[i]) doc.text(String(marcaLines[i]), COL_MARCA, yy);
+      if (modeloLines[i]) doc.text(String(modeloLines[i]), COL_MODELO, yy);
+      if (descLines[i]) doc.text(String(descLines[i]), COL_DESC, yy);
+    }
+
+    doc.text("PZA", COL_UN, y);
+    doc.text(String(item.count), COL_CANT, y, { align: "right" });
+    doc.text(formatCurrency(item.unitCost, currency), COL_PU, y, { align: "right" });
+    doc.text(formatCurrency(item.totalAmount, currency), COL_IMPORTE, y, { align: "right" });
+
+    y += rowHeight;
+  });
+
+  y += 4;
+
+  // ─── Bloque de Totales Financieros
+  ensureSpace(35);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 32, 96);
+  doc.text("Resumen Financiero del Sistema", margin, y);
+  y += 5;
+
+  doc.setFillColor(245, 247, 250);
+  doc.rect(margin, y - 4, pageW - margin * 2, 22, "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(40, 40, 40);
+
+  doc.text("Subtotal Equipamiento Extintores:", margin + 3, y);
+  doc.text(formatCurrency(meta.subtotalAmount, currency), rightX - 3, y, { align: "right" });
+  y += 5;
+
+  doc.text(`IVA (${(meta.ivaRate * 100).toFixed(0)}%):`, margin + 3, y);
+  doc.text(formatCurrency(meta.ivaAmount, currency), rightX - 3, y, { align: "right" });
+  y += 5;
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin + 3, y - 3, rightX - 3, y - 3);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 32, 96);
+  doc.text("GRAN TOTAL ESTIMADO CON IVA:", margin + 3, y + 1);
+  doc.text(formatCurrency(meta.totalWithIva, currency), rightX - 3, y + 1, { align: "right" });
+  y += 10;
+
+  // ─── Matriz de Normatividad Hospitalaria (NOM-002, NOM-016, NOM-026)
+  ensureSpace(35);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 32, 96);
+  doc.text("Dictamen de Cumplimiento Normativo Oficial (NOM-002 / NOM-016 / NOM-026)", margin, y);
+  y += 5;
+
+  doc.setFillColor(240, 244, 248);
+  doc.rect(margin, y - 3, pageW - margin * 2, 22, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(50, 50, 50);
+
+  const nomText = [
+    "• NOM-002-STPS-2010: Cumplimiento de distancias máximas (<=15m alto riesgo / <=30m ordinario) y altura <=1.50m.",
+    "• NOM-016-SSA3-2012: Compatibilidad química (Quirófanos CO2, CEYE/Laboratorio Agente Limpio, Cocina Clase K).",
+    "• NOM-026-STPS-2008: Señalización fotoluminiscente obligatoria colocada entre 1.80m y 2.00m sobre piso terminado.",
+    `• Estado Global del Proyecto: ${meta.validCount} de ${meta.totalCount} extintores en ubicaciones 100% validadas.`
+  ];
+  nomText.forEach((t) => {
+    doc.text(t, margin + 3, y);
+    y += 4.5;
+  });
+
+  y += 8;
+
+  // ─── Cuadro de Firmas y Validación Técnica
+  ensureSpace(35);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(40, 40, 40);
+  doc.text("Cuadro de Firmas y Validación Técnica del Dictamen", pageW / 2, y, { align: "center" });
+  y += 14;
+
+  const colW = (pageW - margin * 2) / 3;
+  const sig1X = margin + colW / 2;
+  const sig2X = margin + colW + colW / 2;
+  const sig3X = margin + colW * 2 + colW / 2;
+
+  doc.setDrawColor(80, 80, 80);
+  doc.line(sig1X - 25, y, sig1X + 25, y);
+  doc.line(sig2X - 25, y, sig2X + 25, y);
+  doc.line(sig3X - 25, y, sig3X + 25, y);
+  y += 4;
+
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.text(meta.responsible || "Ing. Responsable de Proyecto", sig1X, y, { align: "center" });
+  doc.text("Supervisión Técnica PCI", sig2X, y, { align: "center" });
+  doc.text(meta.clientName || "Aprobación del Cliente", sig3X, y, { align: "center" });
+  y += 3.5;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Elaboró / Especialista PCI", sig1X, y, { align: "center" });
+  doc.text("Revisó Normatividad STPS/SSA3", sig2X, y, { align: "center" });
+  doc.text("Aprobó / Cliente Representante", sig3X, y, { align: "center" });
+
+  // ─── Footer Paginado
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${p} de ${totalPages} · Generado por Low Voltage Estimator`,
+      pageW / 2,
+      pageH - 6,
+      { align: "center" }
+    );
+  }
+
+  const cleanName = (meta.projectName || "reporte_extintores").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_");
+  const filename = `${cleanName}_Parametrico_Extintores.pdf`;
+  doc.save(filename);
+  return filename;
+}
+

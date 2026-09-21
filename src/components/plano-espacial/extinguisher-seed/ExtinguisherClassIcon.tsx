@@ -75,6 +75,8 @@ export function getFireClassForAgent(type: ExtinguisherType): FireClass {
   switch (type) {
     case 'WATER_PRESSURIZED':
       return 'A';
+    case 'AFFF':
+      return 'A';
     case 'CO2':
       return 'B';
     case 'CLEAN_AGENT':
@@ -99,7 +101,14 @@ export function ExtinguisherClassIcon({
   const targetClass: FireClass = fireClass || (agentType ? getFireClassForAgent(agentType) : 'B');
   const config = CLASS_CONFIG[targetClass];
 
-  const mainLetter = agentType === 'PQS_ABC' ? 'ABC' : agentType === 'CLEAN_AGENT' ? 'C' : config.letter;
+  const mainLetter =
+    agentType === 'PQS_ABC'
+      ? 'ABC'
+      : agentType === 'CLEAN_AGENT'
+      ? 'C'
+      : agentType === 'AFFF'
+      ? 'AB'
+      : config.letter;
 
   return (
     <div

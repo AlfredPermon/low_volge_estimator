@@ -30,7 +30,7 @@ const priceRowSchema = z.object({
     })
     .min(0, "El costo no puede ser negativo"),
   Rendimiento: z.number().default(0),
-  TipoDispositivo: z.enum(DEVICE_TYPES as unknown as [string, ...string[]]).or(z.literal("")),
+  TipoDispositivo: z.string().default(""),
 });
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -308,11 +308,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Transacción: reemplaza todos los precios de forma atómica
-    await db.$transaction([
-      db.priceItem.deleteMany({}),
-      db.priceItem.createMany({ data: priceItemsToInsert }),
-    ]);
+    // Upsert inteligente por SKU (actualiza existentes e inserta nuevos sin borrar el resto)
+    for (const item of priceItemsToInsert) {
+      const existing = await db.priceItem.findFirst({ where: { sku: item.sku } });
+      if (existing) {
+        await db.priceItem.update({
+          where: { id: existing.id },
+          data: item,
+        });
+      } else {
+        await db.priceItem.create({ data: item });
+      }
+    }
 
     // Resumen de normalizaciones aplicadas (no son errores, son ayudas).
     if (normalizedSystems > 0) {

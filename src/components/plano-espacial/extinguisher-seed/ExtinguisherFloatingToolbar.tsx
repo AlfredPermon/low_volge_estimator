@@ -23,6 +23,7 @@ import {
   Layers,
   Ruler,
   FileCheck,
+  BarChart3,
   ChevronDown,
   X,
   SlidersHorizontal,
@@ -31,19 +32,21 @@ import { toast } from 'sonner';
 import { ExtinguisherClassIcon } from './ExtinguisherClassIcon';
 
 const AGENT_COLORS: Record<ExtinguisherType, { bg: string; text: string; border: string; label: string }> = {
-  CO2: { bg: 'bg-blue-600', text: 'text-blue-100', border: 'border-blue-500', label: 'CO₂ (Dióxido de Carbono - Clase B/C)' },
-  CLEAN_AGENT: { bg: 'bg-purple-600', text: 'text-purple-100', border: 'border-purple-500', label: 'Agente Limpio (Solkaflam - Clase A/B/C)' },
-  CLASS_K: { bg: 'bg-stone-900', text: 'text-stone-100', border: 'border-stone-700', label: 'Clase K (Acetato de Potasio - Cocina)' },
   PQS_ABC: { bg: 'bg-red-600', text: 'text-red-100', border: 'border-red-500', label: 'PQS (Polvo Químico Seco - Clase A/B/C)' },
-  WATER_PRESSURIZED: { bg: 'bg-emerald-600', text: 'text-emerald-100', border: 'border-emerald-500', label: 'Agua Presurizada (Clase A)' },
+  CO2: { bg: 'bg-blue-600', text: 'text-blue-100', border: 'border-blue-500', label: 'CO₂ (Dióxido de Carbono - Clase B/C)' },
+  CLEAN_AGENT: { bg: 'bg-purple-600', text: 'text-purple-100', border: 'border-purple-500', label: 'Agente Limpio HFC / Halotrón (Clase A/B/C)' },
+  WATER_PRESSURIZED: { bg: 'bg-emerald-600', text: 'text-emerald-100', border: 'border-emerald-500', label: 'Agua a Presión (Clase A)' },
+  AFFF: { bg: 'bg-teal-600', text: 'text-teal-100', border: 'border-teal-500', label: 'Espuma Mecánica AFFF (Clase A/B)' },
+  CLASS_K: { bg: 'bg-stone-900', text: 'text-stone-100', border: 'border-stone-700', label: 'Clase K (Acetato de Potasio - Cocina)' },
 };
 
 const TYPE_CAPACITIES: Record<ExtinguisherType, ExtinguisherCapacity[]> = {
-  CO2: ['5lbs', '10lbs'],
-  CLEAN_AGENT: ['4.5kg', '6.0kg'],
-  CLASS_K: ['6L'],
-  PQS_ABC: ['6.0kg', '9.0kg'],
-  WATER_PRESSURIZED: ['9.0kg'],
+  PQS_ABC: ['2.5kg', '4.5kg', '6.0kg', '10.0kg'],
+  CO2: ['2.5kg', '4.5kg', '6.0kg', '10.0kg'],
+  CLEAN_AGENT: ['2.5kg', '4.6kg', '6.0kg', '10.0kg'],
+  WATER_PRESSURIZED: ['6.0kg', '10.0kg', '6L', '9.5L'],
+  AFFF: ['4.5kg', '6.0kg', '10.0kg'],
+  CLASS_K: ['6L', '10L', '6.0L', '9.0L'],
 };
 
 interface ExtinguisherFloatingToolbarProps {
