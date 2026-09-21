@@ -20,11 +20,12 @@ interface ExtinguisherCanvasLayerProps {
 }
 
 const AGENT_STYLE: Record<ExtinguisherType, { bg: string; border: string; text: string; fill: string }> = {
+  PQS_ABC: { bg: 'bg-red-600', border: 'border-red-400', text: 'text-red-200', fill: '#dc2626' },
   CO2: { bg: 'bg-blue-600', border: 'border-blue-400', text: 'text-blue-200', fill: '#2563eb' },
   CLEAN_AGENT: { bg: 'bg-purple-600', border: 'border-purple-400', text: 'text-purple-200', fill: '#9333ea' },
-  CLASS_K: { bg: 'bg-amber-600', border: 'border-amber-400', text: 'text-amber-200', fill: '#d97706' },
-  PQS_ABC: { bg: 'bg-red-600', border: 'border-red-400', text: 'text-red-200', fill: '#dc2626' },
   WATER_PRESSURIZED: { bg: 'bg-cyan-600', border: 'border-cyan-400', text: 'text-cyan-200', fill: '#0891b2' },
+  AFFF: { bg: 'bg-teal-600', border: 'border-teal-400', text: 'text-teal-200', fill: '#0d9488' },
+  CLASS_K: { bg: 'bg-amber-600', border: 'border-amber-400', text: 'text-amber-200', fill: '#d97706' },
 };
 
 export function ExtinguisherCanvasLayer({
