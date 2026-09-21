@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -18,71 +19,89 @@ import {
   User,
   Building2,
   Hash,
-  Flame,
-  ShieldCheck,
+  RotateCcw,
+  ChevronRight,
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  exportExtinguisherReportToPDF,
-  ExtinguisherPdfItem,
-  ExtinguisherPdfMetadata,
-} from '@/lib/pdf-export';
+import { exportBudgetToPDF, PdfMetadata } from '@/lib/pdf-export';
+import { LineItem, CalculationResult } from '@/store/estimate-store';
 import { formatCurrency } from '@/lib/utils';
 
-interface EmailExtinguisherDialogProps {
+export interface EmailBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  itemsWithPrice: ExtinguisherPdfItem[];
-  meta: ExtinguisherPdfMetadata;
+  lineItems: LineItem[];
+  result: CalculationResult;
+  meta: PdfMetadata;
 }
 
-function buildEmailBody(meta: ExtinguisherPdfMetadata, items: ExtinguisherPdfItem[]): string {
+export function buildDefaultEmailBody(
+  meta: PdfMetadata,
+  result: CalculationResult,
+  lineItems: LineItem[]
+): string {
   const fecha = new Date().toLocaleDateString('es-MX', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-
   const currency = meta.currency || 'MXN';
 
-  const breakdownLines = items
+  // Agrupar y contar partidas por sistema
+  const systemsMap = new Map<string, { count: number; total: number }>();
+  for (const item of lineItems) {
+    const sys = item.system || 'GENERAL';
+    const curr = systemsMap.get(sys) || { count: 0, total: 0 };
+    curr.count += 1;
+    curr.total += item.total ?? 0;
+    systemsMap.set(sys, curr);
+  }
+
+  const breakdownLines = Array.from(systemsMap.entries())
     .map(
-      (it, idx) =>
-        `  ${idx + 1}. [${it.sku}] ${it.name} | Cant: ${it.count} PZA | P.U: ${formatCurrency(it.unitCost, currency)} | Importe: ${formatCurrency(it.totalAmount, currency)}`
+      ([sys, data]) =>
+        `  * ${sys.padEnd(14, ' ')} : ${data.count} partida(s) | Subtotal: ${formatCurrency(
+          data.total,
+          currency
+        )}`
     )
     .join('\n');
 
   return `Estimado/a cliente / equipo de trabajo,
 
-Por medio del presente correo, me permito compartirles el Dictamen de Estimación Paramétrica del Sistema de Extintores & Protección Contra Incendio del proyecto indicado a continuación.
+Por medio del presente correo, me permito compartirles la Propuesta Económica y Presupuesto Paramétrico de Sistemas de Bajo Voltaje correspondiente al proyecto indicado a continuación.
 
 --------------------------------------------------
-  INFORMACIÓN DEL PROYECTO
+  INFORMACIÓN GENERAL DEL PROYECTO
 --------------------------------------------------
-  * Proyecto            : ${meta.projectName || 'Estimación General'}
-  * Cliente             : ${meta.clientName || 'Cliente General'}
-  * Responsable Técnica : ${meta.responsible || 'Ing. Responsable de Proyecto'}
+  * Presupuesto         : ${meta.name || 'Presupuesto General'}
+  * Cliente             : ${meta.clientName || 'N/A'}
+  * Proyecto            : ${meta.projectName || 'N/A'}
   * Revisión / Fecha    : ${meta.revision || 'Rev. 1'} · ${fecha}
-  * Moneda              : ${currency}
+  * Responsable         : ${meta.responsible || 'Ejecutivo de Cuenta'}
+  * Moneda de Cotización: ${currency}
 
 --------------------------------------------------
-  RESUMEN FINANCIERO Y CUMPLIMIENTO NORMAS (STPS/SSA3)
+  RESUMEN FINANCIERO Y ESTRUCTURA DE COSTOS
 --------------------------------------------------
-  * Total Equipos       : ${meta.totalCount} extintores sembrados 2D
-  * Validaciones NOM    : ${meta.validCount} de ${meta.totalCount} validados (NOM-002 / NOM-016 / NOM-026)
-  * Subtotal Equipos    : ${formatCurrency(meta.subtotalAmount, currency)}
-  * IVA (${(meta.ivaRate * 100).toFixed(0)}%)             : ${formatCurrency(meta.ivaAmount, currency)}
-  * GRAN TOTAL CON IVA  : ${formatCurrency(meta.totalWithIva, currency)}
+  * Subtotal Directo (Materiales + M.O.) : ${formatCurrency(result.subtotalDirect, currency)}
+  * Costos Indirectos                    : ${formatCurrency(result.subtotalIndirects, currency)}
+  * Utilidad                             : ${formatCurrency(result.subtotalUtility, currency)}
+--------------------------------------------------
+  * GRAN TOTAL (Sin IVA)                 : ${formatCurrency(result.grandTotal, currency)}
+  * IVA (16%)                            : ${formatCurrency(result.iva, currency)}
+  * TOTAL CON IVA INCLUIDO               : ${formatCurrency(result.totalWithIva ?? result.grandTotal, currency)}
 
 --------------------------------------------------
-  DESGLOSE DE EQUIPAMIENTO
+  DESGLOSE POR SISTEMA DE BAJO VOLTAJE
 --------------------------------------------------
-${breakdownLines || '  (Sin partidas sembradas en plano)'}
+${breakdownLines || '  (Sin sistemas configurados)'}
 
 --------------------------------------------------
-Se adjunta el reporte oficial paramétrico en formato PDF con la matriz de cumplimiento normativo hospitalario y cuadro de firmas de validación técnica.
+Se adjunta a este correo el documento oficial en formato PDF con el catálogo de conceptos, marcas, modelos, cantidades, precios unitarios e importes desglosados.
 
-En caso de requerir aclaraciones o ajustes en el dictamen, quedamos a su disposición.
+${meta.notes ? `NOTAS ADICIONALES:\n${meta.notes}\n--------------------------------------------------\n` : ''}Quedamos a sus apreciables órdenes para cualquier duda o aclaración.
 
 Atentamente,
 
@@ -91,12 +110,16 @@ ${meta.clientName ? `Para: ${meta.clientName}` : ''}
 `;
 }
 
+/**
+ * Garantiza que la URI mailto: respete los límites de longitud del SO (Windows 2048 chars max)
+ */
 function buildSafeMailtoUri(to: string, subject: string, ccList: string[], bodyText: string): string {
   const cleanTo = to.trim();
   const cleanSubject = subject.trim();
   const ccParam = ccList.length > 0 ? `&cc=${encodeURIComponent(ccList.join(';'))}` : '';
   const prefix = `mailto:${encodeURIComponent(cleanTo)}?subject=${encodeURIComponent(cleanSubject)}${ccParam}&body=`;
 
+  // Límite seguro de protocolo mailto en Windows / navegadores: 1900 caracteres totales
   const maxBodyEncodedLength = 1900 - prefix.length;
   let encodedBody = encodeURIComponent(bodyText);
 
@@ -111,25 +134,39 @@ function buildSafeMailtoUri(to: string, subject: string, ccList: string[], bodyT
   return prefix + encodedBody;
 }
 
-export function EmailExtinguisherDialog({
+export default function EmailBudgetDialog({
   open,
   onOpenChange,
-  itemsWithPrice,
+  lineItems,
+  result,
   meta,
-}: EmailExtinguisherDialogProps) {
+}: EmailBudgetDialogProps) {
   const [to, setTo] = useState('');
   const [ccList, setCcList] = useState<string[]>([]);
   const [ccInput, setCcInput] = useState('');
-  const [subject, setSubject] = useState(
-    `Dictamen Paramétrico de Extintores${meta.projectName ? ` | ${meta.projectName}` : ''}`
-  );
+  const [subject, setSubject] = useState('');
+  const [bodyText, setBodyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  const cleanProjectName = (meta.projectName || 'Proyecto')
-    .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .replace(/_+/g, '_');
-  const attachmentName = `${cleanProjectName}_Parametrico_Extintores.pdf`;
+  // Inicializar o restablecer el cuerpo del correo al abrir el modal o cambiar props
+  useEffect(() => {
+    if (open) {
+      setBodyText(buildDefaultEmailBody(meta, result, lineItems));
+      setSubject(
+        `Presupuesto Paramétrico - ${meta.name || 'Bajo Voltaje'}${
+          meta.clientName ? ` | ${meta.clientName}` : ''
+        }${meta.revision ? ` | ${meta.revision}` : ''}`
+      );
+    }
+  }, [open, meta, result, lineItems]);
+
+  const cleanName = (meta.name || 'presupuesto')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '_');
+  const cleanRevision = (meta.revision || 'rev-1').replace(/\s+/g, '-');
+  const attachmentName = `${cleanName}_${cleanRevision}.pdf`;
 
   const addCc = () => {
     const trimmed = ccInput.trim();
@@ -142,18 +179,24 @@ export function EmailExtinguisherDialog({
       toast.info('El correo CC ya fue agregado');
       return;
     }
-    setCcList((prev: string[]) => [...prev, trimmed]);
+    setCcList((prev) => [...prev, trimmed]);
     setCcInput('');
   };
 
-  const removeCc = (email: string) => setCcList((prev: string[]) => prev.filter((e: string) => e !== email));
+  const removeCc = (email: string) => setCcList((prev) => prev.filter((e) => e !== email));
+
+  const handleResetBody = () => {
+    setBodyText(buildDefaultEmailBody(meta, result, lineItems));
+    toast.success('Cuerpo del correo restablecido a la plantilla original');
+  };
 
   const handleDownloadPdf = () => {
     setIsDownloadingPdf(true);
     try {
-      exportExtinguisherReportToPDF(itemsWithPrice, meta);
-      toast.success(`Archivo "${attachmentName}" generado y descargado`);
-    } catch {
+      const filename = exportBudgetToPDF(lineItems, result, meta);
+      toast.success(`Archivo "${filename}" descargado`);
+    } catch (err) {
+      console.error('Error generando PDF:', err);
       toast.error('Error al generar el archivo PDF');
     } finally {
       setIsDownloadingPdf(false);
@@ -169,15 +212,16 @@ export function EmailExtinguisherDialog({
       toast.error('El correo del destinatario no es válido');
       return;
     }
+
     setIsSending(true);
     try {
-      // 1. Descargar el reporte PDF automáticamente
-      exportExtinguisherReportToPDF(itemsWithPrice, meta);
+      // 1. Descargar el reporte PDF automáticamente (sincrónico, ultra-rápido)
+      const filename = exportBudgetToPDF(lineItems, result, meta);
 
-      // 2. Armar el cuerpo seguro y disparar mailto:
-      const body = buildEmailBody(meta, itemsWithPrice);
-      const mailtoUri = buildSafeMailtoUri(to, subject, ccList, body);
+      // 2. Construir mailto: optimizado para no exceder límites de SO
+      const mailtoUri = buildSafeMailtoUri(to, subject, ccList, bodyText);
 
+      // 3. Abrir cliente de correo mediante elemento <a> sintético
       const link = document.createElement('a');
       link.href = mailtoUri;
       link.style.display = 'none';
@@ -185,7 +229,7 @@ export function EmailExtinguisherDialog({
       link.click();
       document.body.removeChild(link);
 
-      toast.success(`Outlook abierto. Adjunta el archivo "${attachmentName}" desde Descargas.`, {
+      toast.success(`Outlook abierto. Adjunta el archivo "${filename}" desde Descargas.`, {
         duration: 8000,
       });
       onOpenChange(false);
@@ -197,14 +241,12 @@ export function EmailExtinguisherDialog({
     }
   };
 
-  const previewBody = buildEmailBody(meta, itemsWithPrice);
-
   if (!open) return null;
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        {/* Overlay */}
+        {/* Overlay Glassmorphism */}
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
 
         {/* Content con Ancho Completo Horizontal */}
@@ -221,29 +263,29 @@ export function EmailExtinguisherDialog({
             flexDirection: 'column',
             borderRadius: '1.25rem',
             overflow: 'hidden',
-            boxShadow: '0 32px 80px -12px rgba(0,0,0,0.6)',
+            boxShadow: '0 32px 80px -12px rgba(0,0,0,0.65)',
           }}
-          className="bg-slate-950 text-stone-100 border border-orange-500/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200"
+          className="bg-slate-950 text-stone-100 border border-amber-500/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200"
         >
           {/* ══ HEADER ══════════════════════════════════════════════════════ */}
-          <div className="shrink-0 bg-gradient-to-r from-[#0a2e1a] via-[#133d25] to-[#0a2e1a] px-8 py-5 border-b border-emerald-500/30">
+          <div className="shrink-0 bg-gradient-to-r from-[#1c130b] via-[#2c1a0e] to-[#1c130b] px-8 py-5 border-b border-amber-500/30">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
-                <Flame className="w-6 h-6 text-orange-400 animate-pulse" />
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-inner">
+                <Mail className="w-6 h-6 text-amber-400" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <DialogPrimitive.Title className="text-white font-black text-xl leading-tight tracking-tight flex items-center gap-2.5">
-                  Enviar Dictamen Paramétrico de Extintores por Correo
+                  Enviar Presupuesto Paramétrico por Correo
                 </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="text-emerald-300/80 text-sm mt-0.5">
+                <DialogPrimitive.Description className="text-amber-200/80 text-sm mt-0.5">
                   Outlook se abrirá con el borrador pre-llenado · El archivo PDF se descargará automáticamente
                 </DialogPrimitive.Description>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
-                <Badge className="bg-orange-500/20 text-orange-200 border border-orange-400/30 text-xs font-bold tracking-wider px-3 py-1">
-                  NOM-002 / 016 / 026
+                <Badge className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-bold tracking-wider px-3 py-1">
+                  PRESUPUESTO 2026
                 </Badge>
                 <DialogPrimitive.Close className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-stone-300 hover:text-white transition-all">
                   <X className="w-4 h-4" />
@@ -252,18 +294,26 @@ export function EmailExtinguisherDialog({
             </div>
 
             {/* Strip informativo */}
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-emerald-200/80 font-mono">
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-amber-200/90 font-mono">
               <span className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-orange-400" />
-                {meta.projectName || 'Proyecto General'}
+                <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                {meta.name || 'Presupuesto General'}
               </span>
-              <span className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-orange-400" />
-                {meta.clientName || 'Cliente General'}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                {meta.validCount} de {meta.totalCount} extintores validados
+              {meta.clientName && (
+                <span className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-400" />
+                  {meta.clientName}
+                </span>
+              )}
+              {meta.revision && (
+                <span className="flex items-center gap-1.5">
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  {meta.revision}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5 font-bold text-amber-300 ml-auto">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                Total con IVA: {formatCurrency(result.totalWithIva ?? result.grandTotal, meta.currency || 'MXN')}
               </span>
             </div>
           </div>
@@ -271,30 +321,30 @@ export function EmailExtinguisherDialog({
           {/* ══ BODY — 2 Columnas ════════════════════════════════════════════ */}
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0 bg-slate-950">
 
-            {/* ── COLUMNA IZQUIERDA: Formulario ──────────────────────────── */}
-            <div className="lg:w-[490px] shrink-0 flex flex-col border-r border-stone-800 overflow-y-auto">
+            {/* ── COLUMNA IZQUIERDA: Formulario y Cuerpo Editable ─────────── */}
+            <div className="lg:w-[540px] shrink-0 flex flex-col border-r border-stone-800 overflow-y-auto">
               <div className="p-6 space-y-5 flex-1">
 
-                <div className="flex items-start gap-3 p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs text-emerald-200 leading-relaxed">
-                  <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs text-amber-200 leading-relaxed">
+                  <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <p>
-                    Ingresa el destinatario y haz clic en <strong>Enviar con Outlook</strong>. Se descargará el informe PDF oficial y se abrirá tu cliente de correo.
+                    Ingresa el destinatario y edita el cuerpo del mensaje si lo deseas. Al presionar <strong>Enviar con Outlook</strong>, se generará el PDF y se abrirá tu cliente de correo.
                   </p>
                 </div>
 
                 {/* Para */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-orange-400" />
+                    <User className="w-3.5 h-3.5 text-amber-400" />
                     Para <span className="text-red-400 font-normal normal-case">* requerido</span>
                   </Label>
                   <Input
                     id="email-to"
                     type="email"
                     value={to}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTo(e.target.value)}
+                    onChange={(e) => setTo(e.target.value)}
                     placeholder="destinatario@cliente.com"
-                    className="h-11 text-sm bg-stone-900 border-stone-700 text-white focus-visible:ring-orange-500"
+                    className="h-11 text-sm bg-stone-900 border-stone-700 text-white focus-visible:ring-amber-500"
                   />
                 </div>
 
@@ -309,8 +359,8 @@ export function EmailExtinguisherDialog({
                       id="email-cc"
                       type="email"
                       value={ccInput}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCcInput(e.target.value)}
-                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      onChange={(e) => setCcInput(e.target.value)}
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ',') {
                           e.preventDefault();
                           addCc();
@@ -324,14 +374,14 @@ export function EmailExtinguisherDialog({
                       variant="outline"
                       size="sm"
                       onClick={addCc}
-                      className="h-11 w-11 p-0 border-stone-700 text-stone-300 hover:text-orange-400 hover:border-orange-500 bg-stone-900"
+                      className="h-11 w-11 p-0 border-stone-700 text-stone-300 hover:text-amber-400 hover:border-amber-500 bg-stone-900"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
                   {ccList.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {ccList.map((email: string) => (
+                      {ccList.map((email) => (
                         <Badge
                           key={email}
                           variant="secondary"
@@ -356,8 +406,37 @@ export function EmailExtinguisherDialog({
                   <Input
                     id="email-subject"
                     value={subject}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSubject(e.target.value)}
+                    onChange={(e) => setSubject(e.target.value)}
                     className="h-11 text-sm bg-stone-900 border-stone-700 text-white"
+                  />
+                </div>
+
+                {/* Cuerpo del Correo Editable (Body) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-amber-400" />
+                      Cuerpo del Mensaje (Editable)
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetBody}
+                      className="h-7 text-[11px] text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 gap-1 px-2"
+                      title="Restablecer a la plantilla original"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Restablecer Plantilla
+                    </Button>
+                  </div>
+                  <Textarea
+                    id="email-body-input"
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    rows={8}
+                    className="bg-stone-900 border-stone-700 text-stone-100 text-xs font-mono leading-relaxed focus-visible:ring-amber-500 resize-y"
+                    placeholder="Escribe o edita el cuerpo del mensaje..."
                   />
                 </div>
 
@@ -368,14 +447,14 @@ export function EmailExtinguisherDialog({
                     Adjunto PDF Estandarizado
                   </Label>
                   <div className="flex items-center gap-3 p-4 bg-stone-900 border border-stone-800 rounded-xl">
-                    <div className="w-11 h-11 rounded-xl bg-orange-950/80 border border-orange-500/40 flex items-center justify-center shrink-0">
-                      <FileText className="w-6 h-6 text-orange-400" />
+                    <div className="w-11 h-11 rounded-xl bg-amber-950/80 border border-amber-500/40 flex items-center justify-center shrink-0">
+                      <FileText className="w-6 h-6 text-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-white truncate" title={attachmentName}>
                         {attachmentName}
                       </p>
-                      <p className="text-[11px] text-stone-400 mt-0.5">Reporte Oficial GESTION DE RIESGOS Y CONTROL</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">Reporte Oficial Presupuesto Bajo Voltaje</p>
                     </div>
                     <Button
                       type="button"
@@ -383,11 +462,39 @@ export function EmailExtinguisherDialog({
                       size="sm"
                       onClick={handleDownloadPdf}
                       disabled={isDownloadingPdf}
-                      className="h-9 px-3 text-xs text-orange-300 border-orange-500/50 bg-stone-900 hover:bg-stone-800 shrink-0 font-semibold"
+                      className="h-9 px-3 text-xs text-amber-300 border-amber-500/50 bg-stone-900 hover:bg-stone-800 shrink-0 font-semibold"
                     >
                       <Paperclip className="w-3.5 h-3.5 mr-1" />
                       {isDownloadingPdf ? 'Generando...' : 'Descargar'}
                     </Button>
+                  </div>
+                </div>
+
+                {/* Datos clave del presupuesto */}
+                <div className="rounded-xl border border-stone-800 overflow-hidden bg-stone-900/60">
+                  <div className="bg-stone-900 px-4 py-2.5 flex items-center gap-2 border-b border-stone-800">
+                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                    <p className="text-[11px] font-bold text-stone-300 uppercase tracking-wider">
+                      Resumen Financiero del Presupuesto
+                    </p>
+                  </div>
+                  <div className="divide-y divide-stone-800/80 text-xs">
+                    <div className="flex items-center justify-between px-4 py-2 text-stone-300">
+                      <span>Subtotal Directo:</span>
+                      <span className="font-mono font-medium">{formatCurrency(result.subtotalDirect, meta.currency || 'MXN')}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2 text-stone-300">
+                      <span>Costos Indirectos:</span>
+                      <span className="font-mono font-medium">{formatCurrency(result.subtotalIndirects, meta.currency || 'MXN')}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2 text-stone-300">
+                      <span>Utilidad:</span>
+                      <span className="font-mono font-medium">{formatCurrency(result.subtotalUtility, meta.currency || 'MXN')}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2 bg-amber-950/20 text-amber-300 font-bold">
+                      <span>TOTAL CON IVA:</span>
+                      <span className="font-mono">{formatCurrency(result.totalWithIva ?? result.grandTotal, meta.currency || 'MXN')}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -398,9 +505,9 @@ export function EmailExtinguisherDialog({
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-stone-900/60 p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-stone-300 uppercase tracking-wider flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-orange-400" /> Vista Previa del Correo (Outlook Mockup)
+                  <Mail className="w-4 h-4 text-amber-400" /> Vista Previa del Correo (Outlook Mockup)
                 </span>
-                <Badge variant="outline" className="text-[10px] text-orange-300 border-orange-500/40 font-mono">
+                <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/40 font-mono">
                   Outlook Draft Mode
                 </Badge>
               </div>
@@ -408,7 +515,7 @@ export function EmailExtinguisherDialog({
               {/* Contenedor Mockup Outlook */}
               <div className="flex-1 overflow-hidden flex flex-col border border-stone-800 rounded-xl shadow-2xl bg-slate-950">
                 {/* Barra Azul Outlook */}
-                <div className="bg-[#0078d4] px-4 py-2.5 flex items-center justify-between text-white text-xs font-bold">
+                <div className="bg-[#0078d4] px-4 py-2.5 flex items-center justify-between text-white text-xs font-bold shrink-0">
                   <div className="flex items-center gap-2">
                     <Send className="w-4 h-4" />
                     <span>Nuevo Mensaje - Outlook</span>
@@ -417,10 +524,10 @@ export function EmailExtinguisherDialog({
                 </div>
 
                 {/* Headers Correo */}
-                <div className="bg-stone-950 p-3.5 border-b border-stone-800 space-y-1.5 text-xs">
+                <div className="bg-stone-950 p-3.5 border-b border-stone-800 space-y-1.5 text-xs shrink-0">
                   <div className="flex items-center gap-2">
                     <span className="text-stone-400 w-16 font-semibold">Para:</span>
-                    <span className="text-emerald-400 font-mono">{to || 'destinatario@cliente.com'}</span>
+                    <span className="text-amber-400 font-mono">{to || 'destinatario@cliente.com'}</span>
                   </div>
                   {ccList.length > 0 && (
                     <div className="flex items-center gap-2">
@@ -432,19 +539,26 @@ export function EmailExtinguisherDialog({
                     <span className="text-stone-400 w-16 font-semibold">Asunto:</span>
                     <span className="text-white font-semibold truncate">{subject}</span>
                   </div>
+                  <div className="flex items-center gap-2 pt-1.5 border-t border-stone-800">
+                    <span className="text-stone-400 w-16 font-semibold">Adjunto:</span>
+                    <div className="flex items-center gap-1.5 bg-amber-950/40 border border-amber-500/30 rounded px-2 py-0.5">
+                      <FileText className="w-3 h-3 text-amber-400" />
+                      <span className="text-amber-200 text-[10px] font-medium truncate max-w-[320px]">{attachmentName}</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Cuerpo del Correo Previsualizado */}
+                {/* Cuerpo del Correo Previsualizado en tiempo real */}
                 <div className="flex-1 overflow-y-auto p-4 bg-slate-900/90 text-stone-200 text-xs font-mono leading-relaxed whitespace-pre-wrap">
-                  {previewBody}
+                  {bodyText}
                 </div>
               </div>
 
               {/* Alerta de Acción Requerida */}
-              <div className="flex items-start gap-3 p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs text-amber-200 leading-relaxed">
+              <div className="flex items-start gap-3 p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs text-amber-200 leading-relaxed shrink-0">
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Importante:</strong> Al presionar <strong>Enviar con Outlook</strong>, se descargará la estimación paramétrica en PDF y se abrirá tu borrador en Outlook listo para adjuntar.
+                  <strong>Importante:</strong> Al presionar <strong>Enviar con Outlook</strong>, se descargará el presupuesto PDF oficial y se abrirá tu borrador en Outlook listo para adjuntar.
                 </p>
               </div>
             </div>
@@ -454,7 +568,7 @@ export function EmailExtinguisherDialog({
           {/* ══ FOOTER ══════════════════════════════════════════════════════ */}
           <div className="shrink-0 border-t border-stone-800 bg-slate-950 px-8 py-4 flex items-center justify-between gap-4">
             <p className="text-xs text-stone-400">
-              Low Voltage Estimator · Módulo Paramétrico Extintores & Protección Contra Incendio
+              Low Voltage Estimator · Módulo Presupuesto de Bajo Voltaje
             </p>
             <div className="flex items-center gap-3">
               <Button
@@ -468,7 +582,7 @@ export function EmailExtinguisherDialog({
               <Button
                 onClick={handleSendOutlook}
                 disabled={isSending}
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold gap-2 shadow-lg shadow-emerald-950/50 px-6"
+                className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-500 hover:to-orange-500 text-white font-bold gap-2 shadow-lg shadow-amber-950/50 px-6"
               >
                 <Send className="w-4 h-4" />
                 {isSending ? 'Preparando...' : 'Enviar con Outlook'}
