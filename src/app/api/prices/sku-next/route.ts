@@ -46,7 +46,7 @@ function parseSkuSequence(sku: string): number | null {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const system = searchParams.get("system");
     const category = searchParams.get("category");
     const skuToCheck = searchParams.get("sku"); // Para validar si un SKU específico existe

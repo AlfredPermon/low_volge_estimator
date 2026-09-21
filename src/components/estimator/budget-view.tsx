@@ -19,6 +19,7 @@ import {
   History,
   Save,
   Clock,
+  Mail,
 } from 'lucide-react';
 import { useEstimateStore, type LineItem, type EstimateFactors } from '@/store/estimate-store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +60,7 @@ import { filterLineItemsForExport } from '@/lib/export-filters';
 import { buildBudgetCsvContent } from '@/lib/budget-csv';
 import ApuDialog from '@/components/estimator/apu-dialog';
 import AddDeviceDialog from '@/components/estimator/add-device-dialog';
+import EmailBudgetDialog from '@/components/estimator/email-budget-dialog';
 import { toast } from 'sonner';
 
 // ─── System color mapping ──────────────────────────────────────────────
@@ -217,11 +219,12 @@ export default function BudgetView() {
   const revertLineItems = useEstimateStore((s) => s.revertLineItems);
   const restoreHistoryVersion = useEstimateStore((s) => s.restoreHistoryVersion);
 
-  // Estados de modales (Agregar dispositivo / Confirmar eliminación / Historial / Alerta de error)
+  // Estados de modales (Agregar dispositivo / Confirmar eliminación / Historial / Alerta de error / Correo)
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [addModalSystem, setAddModalSystem] = useState<string>('CCTV');
   const [deletingItem, setDeletingItem] = useState<LineItem | null>(null);
   const [errorAlert, setErrorAlert] = useState<{ title: string; message: string } | null>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
 
   // Historial
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
@@ -596,6 +599,16 @@ export default function BudgetView() {
             <FileDown className="h-4 w-4" />
             PDF
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-amber-400 text-amber-800 hover:bg-amber-50 bg-amber-50/50"
+            onClick={() => setIsEmailModalOpen(true)}
+            title="Enviar propuesta por correo electrónico utilizando Outlook"
+          >
+            <Mail className="h-4 w-4 text-amber-600" />
+            E-MAIL
+          </Button>
         </div>
       </div>
 
@@ -852,6 +865,24 @@ export default function BudgetView() {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         defaultSystem={addModalSystem}
+      />
+
+      {/* Modal de Envío por Correo */}
+      <EmailBudgetDialog
+        open={isEmailModalOpen}
+        onOpenChange={setIsEmailModalOpen}
+        lineItems={result.lineItems}
+        result={result}
+        meta={{
+          name,
+          clientName,
+          projectName,
+          revision,
+          responsible,
+          notes,
+          factorsNotes,
+          currency,
+        }}
       />
 
       {/* Diálogo de Confirmación de Eliminación */}

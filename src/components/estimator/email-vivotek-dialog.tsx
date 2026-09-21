@@ -44,29 +44,31 @@ function buildEmailBody(data: VivotekFormData): string {
 
 Por medio del presente correo, me permito compartirles el Registro de Proyecto correspondiente a la oportunidad indicada a continuación, conforme al proceso oficial de registro de proyectos VIVOTEK.
 
-───────────────────────────────────────────────────
+--------------------------------------------------
   INFORMACIÓN DEL REGISTRO
-───────────────────────────────────────────────────
-  • Número de Registro  : ${data.numRegistro || 'N/A'}
-  • Nombre del Proyecto : ${data.nombreProyecto || 'N/A'}
-  • Fecha de Registro   : ${fecha}
-  • Usuario Final       : ${data.empresaUsuarioFinal || 'N/A'}
-  • Lugar del Proyecto  : ${data.lugarProyecto || 'N/A'}
-───────────────────────────────────────────────────
-  DATOS DEL INTEGRADOR
-───────────────────────────────────────────────────
-  • Empresa Integradora : ${data.nombreEmpresaIntegrador || 'N/A'}
-  • Persona que Registra: ${data.personaRegistraIntegrador || 'N/A'}
-  • E-mail Integrador   : ${data.emailIntegrador || 'N/A'}
-  • Responsable Ing.    : ${data.responsableIngenieria || 'N/A'}
-───────────────────────────────────────────────────
-  DATOS DEL MAYORISTA
-───────────────────────────────────────────────────
-  • Mayorista           : ${data.nombreMayorista || 'TVC Línea Comercial'}
-  • Persona de Contacto : ${data.personaRegistraMayorista || 'N/A'}
-  • E-mail Mayorista    : ${data.emailMayorista || 'N/A'}
-───────────────────────────────────────────────────
+--------------------------------------------------
+  * Número de Registro  : ${data.numRegistro || 'N/A'}
+  * Nombre del Proyecto : ${data.nombreProyecto || 'N/A'}
+  * Fecha de Registro   : ${fecha}
+  * Usuario Final       : ${data.empresaUsuarioFinal || 'N/A'}
+  * Lugar del Proyecto  : ${data.lugarProyecto || 'N/A'}
 
+--------------------------------------------------
+  DATOS DEL INTEGRADOR
+--------------------------------------------------
+  * Empresa Integradora : ${data.nombreEmpresaIntegrador || 'N/A'}
+  * Persona que Registra: ${data.personaRegistraIntegrador || 'N/A'}
+  * E-mail Integrador   : ${data.emailIntegrador || 'N/A'}
+  * Responsable Ing.    : ${data.responsableIngenieria || 'N/A'}
+
+--------------------------------------------------
+  DATOS DEL MAYORISTA
+--------------------------------------------------
+  * Mayorista           : ${data.nombreMayorista || 'TVC Línea Comercial'}
+  * Persona de Contacto : ${data.personaRegistraMayorista || 'N/A'}
+  * E-mail Mayorista    : ${data.emailMayorista || 'N/A'}
+
+--------------------------------------------------
 Se adjunta el archivo de Registro de Proyecto en formato Excel (.xlsx) con el detalle completo de los equipos VIVOTEK solicitados, incluyendo modelos, cantidades, precios y extensiones de garantía aplicables.
 
 Este registro tiene una vigencia de 30 días naturales, sujeto a seguimiento periódico por parte del Integrador conforme a las políticas de registro de proyectos VIVOTEK.
@@ -77,11 +79,27 @@ Atentamente,
 
 ${data.personaRegistraIntegrador || 'Ejecutivo de Ventas'}
 ${data.nombreEmpresaIntegrador || ''}${data.emailIntegrador ? `\n✉ ${data.emailIntegrador}` : ''}
-
-───────────────────────────────────────────────────
-Este correo es generado por el Sistema de Registro VIVOTEK / TVC.
-Registro N°: ${data.numRegistro || 'N/A'}
 `;
+}
+
+function buildSafeMailtoUri(to: string, subject: string, ccList: string[], bodyText: string): string {
+  const cleanTo = to.trim();
+  const cleanSubject = subject.trim();
+  const ccParam = ccList.length > 0 ? `&cc=${encodeURIComponent(ccList.join(';'))}` : '';
+  const prefix = `mailto:${encodeURIComponent(cleanTo)}?subject=${encodeURIComponent(cleanSubject)}${ccParam}&body=`;
+
+  const maxBodyEncodedLength = 1900 - prefix.length;
+  let encodedBody = encodeURIComponent(bodyText);
+
+  if (encodedBody.length > maxBodyEncodedLength && maxBodyEncodedLength > 100) {
+    const rawLimit = Math.floor(bodyText.length * (maxBodyEncodedLength / encodedBody.length)) - 60;
+    const safeBody =
+      bodyText.slice(0, Math.max(100, rawLimit)) +
+      '\n\n[...Texto completo disponible en el archivo Excel adjunto]';
+    encodedBody = encodeURIComponent(safeBody);
+  }
+
+  return prefix + encodedBody;
 }
 
 export default function EmailVivotekDialog({
@@ -143,12 +161,19 @@ export default function EmailVivotekDialog({
     try {
       await exportVivotekFormToExcel(formData);
       const body = buildEmailBody(formData);
-      const ccParam = ccList.length > 0 ? `&cc=${encodeURIComponent(ccList.join(';'))}` : '';
-      const mailtoUri = `mailto:${encodeURIComponent(to.trim())}?subject=${encodeURIComponent(subject)}${ccParam}&body=${encodeURIComponent(body)}`;
-      window.location.href = mailtoUri;
+      const mailtoUri = buildSafeMailtoUri(to, subject, ccList, body);
+
+      const link = document.createElement('a');
+      link.href = mailtoUri;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
       toast.success(`Outlook abierto. Adjunta el archivo "${attachmentName}" desde Descargas.`, { duration: 8000 });
       onOpenChange(false);
-    } catch {
+    } catch (err) {
+      console.error('Error enviando correo:', err);
       toast.error('Error al preparar el correo. Intenta de nuevo.');
     } finally {
       setIsSending(false);
