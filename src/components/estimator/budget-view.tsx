@@ -177,7 +177,6 @@ function exportToCSV(
     result: {
       subtotalDirect: result.subtotalDirect ?? 0,
       subtotalIndirects: result.subtotalIndirects ?? 0,
-      subtotalUtility: result.subtotalUtility ?? 0,
       grandTotal: result.grandTotal ?? 0,
       iva: result.iva ?? 0,
       totalWithIva: result.totalWithIva ?? 0,
@@ -815,12 +814,6 @@ export default function BudgetView() {
               <span className="text-muted-foreground">Costos Indirectos</span>
               <span className="font-medium">
                 {formatCurrency(result.subtotalIndirects, currency)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Utilidad</span>
-              <span className="font-medium">
-                {formatCurrency(result.subtotalUtility, currency)}
               </span>
             </div>
             <Separator />

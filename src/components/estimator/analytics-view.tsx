@@ -5,7 +5,7 @@
  *
  * Genera 3 sub-vistas:
  *  - Distribución por sistema (Pie chart)
- *  - Cascada financiera Directo → Indirecto → Utilidad → IVA (Bar chart)
+ *  - Cascada financiera Directo → Indirecto → IVA (Bar chart)
  *  - Pareto de conceptos con mayor importe acumulado
  */
 
@@ -52,7 +52,6 @@ const SYSTEM_COLORS: Record<string, string> = {
 const FINANCIAL_COLORS = {
   directo: '#10b981',      // emerald-500
   indirecto: '#0ea5e9',    // sky-500
-  utilidad: '#a855f7',     // purple-500
   iva: '#f59e0b',          // amber-500
 };
 
@@ -80,7 +79,6 @@ export default function AnalyticsView() {
     return [
       { name: 'Subtotal Directo', value: result.subtotalDirect, fill: FINANCIAL_COLORS.directo },
       { name: 'Indirectos', value: result.subtotalIndirects, fill: FINANCIAL_COLORS.indirecto },
-      { name: 'Utilidad', value: result.subtotalUtility, fill: FINANCIAL_COLORS.utilidad },
       { name: 'Gran Total', value: result.grandTotal, fill: '#374151' },
       { name: 'IVA', value: result.iva ?? 0, fill: FINANCIAL_COLORS.iva },
       { name: 'Total con IVA', value: result.totalWithIva ?? result.grandTotal, fill: '#059669' },

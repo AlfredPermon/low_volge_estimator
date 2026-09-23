@@ -281,11 +281,6 @@ export function exportBudgetToPDF(
   doc.text(formatCurrency(result.subtotalIndirects, meta.currency), rightX - 2, y, { align: "right" });
   y += 5;
 
-  // Utilidad
-  doc.text("Utilidad", margin + 2, y);
-  doc.text(formatCurrency(result.subtotalUtility, meta.currency), rightX - 2, y, { align: "right" });
-  y += 5;
-
   // Línea separadora
   doc.setDrawColor(200, 200, 200);
   doc.line(margin + 2, y - 3, rightX - 2, y - 3);
