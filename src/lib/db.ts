@@ -61,6 +61,19 @@ export async function ensureDatabaseSchema() {
       await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Estimate_userId_idx" ON "Estimate"("userId");');
     }
 
+    // 3.b Eliminación del factor "Utilidad" del paramétrico (presupuesto
+    // estimado para comité de inversiones: GT = Directo + Indirectos).
+    // Las columnas legacy se quitan de forma tolerante (SQLite >= 3.35).
+    for (const legacyCol of ['utilityFactor', 'subtotalUtility']) {
+      if (estColNames.has(legacyCol)) {
+        try {
+          await db.$executeRawUnsafe(`ALTER TABLE Estimate DROP COLUMN "${legacyCol}";`);
+        } catch (e) {
+          console.warn(`No se pudo eliminar la columna legacy Estimate.${legacyCol}:`, e);
+        }
+      }
+    }
+
     // 4. Columna userId en PriceItem
     const priceCols = (await db.$queryRawUnsafe('PRAGMA table_info(PriceItem);')) as Array<{ name: string }>;
     const priceColNames = new Set(Array.isArray(priceCols) ? priceCols.map((c) => c.name) : []);

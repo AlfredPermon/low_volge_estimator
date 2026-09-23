@@ -1,4 +1,3 @@
-(empty)
 # Dependencies
 node_modules/
 
@@ -6,13 +5,13 @@ node_modules/
 .next/
 out/
 
+# Build Artifacts & Caches
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
 # Production / distribution
 dist/
 dist-package/
-
-# TypeScript
-*.tsbuildinfo
-tsconfig.tsbuildinfo
 
 # Environment files
 .env
@@ -27,3 +26,4 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+

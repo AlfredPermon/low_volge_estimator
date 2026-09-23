@@ -18,7 +18,6 @@ describe('Budget History & Persistence', () => {
         subtotalEngineering: 0,
         subtotalDirect: 0,
         subtotalIndirects: 0,
-        subtotalUtility: 0,
         grandTotal: 0,
         iva: 0,
         totalWithIva: 0,
@@ -70,10 +69,9 @@ describe('Budget History & Persistence', () => {
       subtotalEngineering: 0,
       subtotalDirect: 10000,
       subtotalIndirects: 1200,
-      subtotalUtility: 1680,
-      grandTotal: 12880,
-      iva: 2060.8,
-      totalWithIva: 14940.8,
+      grandTotal: 11200,
+      iva: 1792,
+      totalWithIva: 12992,
     };
 
     const resOk = useEstimateStore.getState().restoreHistoryVersion(JSON.stringify(snapshotObj));
@@ -82,7 +80,7 @@ describe('Budget History & Persistence', () => {
     const state = useEstimateStore.getState();
     assert.strictEqual(state.result?.lineItems.length, 1);
     assert.strictEqual(state.result?.lineItems[0].code, 'CAM-RESTORE-01');
-    assert.strictEqual(state.result?.grandTotal, 12880);
+    assert.strictEqual(state.result?.grandTotal, 11200);
     assert.strictEqual(state.isDirty, true);
 
     // Snapshot inválido o vacío retorna false

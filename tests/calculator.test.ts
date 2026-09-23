@@ -2,7 +2,7 @@
  * Tests del motor de cálculo (Fase 1 del plan TASK.md).
  *
  * Cubren:
- *  - Reglas de negocio (Costo Directo, Indirecto, Utilidad, Gran Total, IVA)
+ *  - Reglas de negocio (Costo Directo, Indirecto, Gran Total, IVA)
  *  - Sistema INCENDIO usa el prefijo 5.7.5 (TASK §4)
  *  - Subtotal por sistema correcto
  *  - Cantidades cero no rompen la suma
@@ -21,7 +21,6 @@ const baseFactors = {
   verticalDrop: 3.0,
   rackAllowance: 5.0,
   indirectFactor: 0.25,    // 25% TASK §5
-  utilityFactor: 0.13,     // 13% TASK §5
   ivaRate: 0.16,           // 16% TASK §9.1
   roundingPolicy: 2 as const,
 };
@@ -50,7 +49,7 @@ describe("runCalculation — reglas financieras (TASK §5, §7, §9.1)", () => {
     assert.ok(result.lineItems.length > 0);
   });
 
-  it("Gran Total = Subtotal Directo × (1+ind) × (1+util)", () => {
+  it("Gran Total = Subtotal Directo × (1+ind)", () => {
     const result = runCalculation({
       cctvConfig: {
         cameras: [{ type: "IP Bullet", qty: 1, hasPoE: true }],
@@ -58,10 +57,10 @@ describe("runCalculation — reglas financieras (TASK §5, §7, §9.1)", () => {
         avgDistanceMeters: 50,
         licenses: 0,
       },
-      factors: { ...baseFactors, indirectFactor: 0.25, utilityFactor: 0.13, ivaRate: 0.16 },
+      factors: { ...baseFactors, indirectFactor: 0.25, ivaRate: 0.16 },
       priceItems: noPriceItems,
     });
-    const expectedGT = Math.round(result.subtotalDirect * 1.25 * 1.13 * 100) / 100;
+    const expectedGT = Math.round(result.subtotalDirect * 1.25 * 100) / 100;
     assert.ok(Math.abs(result.grandTotal - expectedGT) <= 0.5);
   });
 
@@ -291,7 +290,6 @@ describe("runCalculation — reglas financieras (TASK §5, §7, §9.1)", () => {
       verticalDrop: 3.0,
       rackAllowance: 5.0,
       indirectFactor: 0.12,
-      utilityFactor: 0.15,
       ivaRate: 0.16,
       roundingPolicy: 2 as const,
     };
@@ -317,7 +315,7 @@ describe("runCalculation — reglas financieras (TASK §5, §7, §9.1)", () => {
       priceItems,
     });
 
-    const baseline = 1393109.05;
+    const baseline = 1393109.05 * 1.11; // Umbral recalibrado a GT sin Utilidad: 1,602,075.41 × (1+12% ind) × (1+16% IVA)
     assert.ok(
       result.totalWithIva >= 1.2 * baseline,
       `totalWithIva (${result.totalWithIva}) < 1.2×${baseline}`
