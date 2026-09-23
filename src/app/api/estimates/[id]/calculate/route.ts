@@ -32,7 +32,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         subtotalEngineering: estimate.subtotalEngineering,
         subtotalDirect: estimate.subtotalDirect,
         subtotalIndirects: estimate.subtotalIndirects,
-        subtotalUtility: estimate.subtotalUtility,
         grandTotal: estimate.grandTotal,
         iva: estimate.iva,
         totalWithIva: estimate.totalWithIva,
@@ -49,7 +48,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       verticalDrop: estimate.verticalDrop,
       rackAllowance: estimate.rackAllowance,
       indirectFactor: estimate.indirectFactor,
-      utilityFactor: estimate.utilityFactor,
       ivaRate: estimate.ivaRate,
       roundingPolicy: (estimate.roundingPolicy ?? 2) as 0 | 1 | 2 | 3 | 4,
       // A2 - Mano de obra por cuadrilla
@@ -110,7 +108,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         subtotalEngineering: result.subtotalEngineering,
         subtotalDirect: result.subtotalDirect,
         subtotalIndirects: result.subtotalIndirects,
-        subtotalUtility: result.subtotalUtility,
         grandTotal: result.grandTotal,
         iva: result.iva,
         totalWithIva: result.totalWithIva,

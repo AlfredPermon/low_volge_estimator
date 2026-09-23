@@ -27,10 +27,9 @@ describe('Budget Row Management & Auto-Recalculation', () => {
       subtotalEngineering: 0,
       subtotalDirect: 2000,
       subtotalIndirects: 240,
-      subtotalUtility: 336,
-      grandTotal: 2576,
-      iva: 412.16,
-      totalWithIva: 2988.16,
+      grandTotal: 2240,
+      iva: 358.4,
+      totalWithIva: 2598.4,
     });
 
     // Agregar segundo item a CCTV
@@ -103,10 +102,9 @@ describe('Budget Row Management & Auto-Recalculation', () => {
       subtotalEngineering: 0,
       subtotalDirect: 7000,
       subtotalIndirects: 840,
-      subtotalUtility: 1176,
-      grandTotal: 9016,
-      iva: 1442.56,
-      totalWithIva: 10458.56,
+      grandTotal: 7840,
+      iva: 1254.4,
+      totalWithIva: 9094.4,
     });
 
     // Eliminar el item intermedio li_acc_2
