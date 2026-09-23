@@ -244,7 +244,6 @@ export interface CalculationResult {
   subtotalServices: number;
   subtotalDirect: number;
   subtotalIndirects: number;
-  subtotalUtility: number;
   grandTotal: number;
   iva: number;
   totalWithIva: number;
@@ -375,7 +374,6 @@ export interface EstimateFactors {
   verticalDrop: number;
   rackAllowance: number;
   indirectFactor: number;
-  utilityFactor: number;
   /** Política de redondeo global (TASK §10, §11.4). Por defecto 2 decimales. */
   roundingPolicy: RoundingPolicy;
   /** Tasa de IVA aplicable al subtotal general (TASK §9.1). Por defecto 16%. */
@@ -421,7 +419,6 @@ export interface CalculationResult {
   subtotalServices: number;
   subtotalDirect: number;
   subtotalIndirects: number;
-  subtotalUtility: number;
   grandTotal: number;
   iva: number;
   totalWithIva: number;
@@ -2054,9 +2051,11 @@ export function runCalculation(params: {
   const subtotalServices = r(allLineItems.filter((i) => i.category === "Servicio").reduce((s, i) => s + i.totalAmount, 0));
 
   const subtotalDirect = r(subtotalMaterials + subtotalLabor + subtotalEngineering + subtotalServices);
+  // Utilidad eliminada del paramétrico: el presupuesto estimado se presenta
+  // a comité de inversiones y no incluye margen de utilidad (no es cotización
+  // integrador → proveedor). GT = Directo + Indirectos.
   const subtotalIndirects = r(subtotalDirect * factors.indirectFactor);
-  const subtotalUtility = r((subtotalDirect + subtotalIndirects) * factors.utilityFactor);
-  const grandTotal = r(subtotalDirect + subtotalIndirects + subtotalUtility);
+  const grandTotal = r(subtotalDirect + subtotalIndirects);
   // IVA se calcula sobre el grandTotal (TASK §7, §9.1)
   const iva = r(grandTotal * factors.ivaRate);
   const totalWithIva = r(grandTotal + iva);
@@ -2069,7 +2068,6 @@ export function runCalculation(params: {
     subtotalServices,
     subtotalDirect,
     subtotalIndirects,
-    subtotalUtility,
     grandTotal,
     iva,
     totalWithIva,
