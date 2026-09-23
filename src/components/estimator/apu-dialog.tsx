@@ -4,12 +4,11 @@
  * D2 - Análisis de Precio Unitario (APU) por línea (TASK §17.2).
  *
  * Modal que muestra el desglose de cómo se compone el precio unitario de una
- * partida, aplicando los factores del proyecto (indirecto, utilidad, IVA):
+ * partida, aplicando los factores del proyecto (indirecto, IVA):
  *
  *   PU base (Costo Directo Unitario) = materialUnit + laborUnit + engineeringUnit
  *   Indirectos Unitarios              = PU base × indirectFactor
- *   Utilidad Unitaria                 = (PU base + Indirectos) × utilityFactor
- *   PU sin IVA                        = PU base + Indirectos + Utilidad
+ *   PU sin IVA                        = PU base + Indirectos
  *   IVA                               = PU sin IVA × ivaRate
  *   PU con IVA                        = PU sin IVA + IVA
  */
@@ -45,7 +44,6 @@ interface ApuBreakdown {
   costDirectUnit: number;
   // Cascada de factores
   indirectAmount: number;
-  utilityAmount: number;
   puSinIva: number;
   ivaAmount: number;
   puConIva: number;
@@ -60,12 +58,14 @@ interface ApuBreakdown {
  * `unitCost` en LineItem representa el costo unitario base cargado en BD
  * (que puede ser material, MO o mixto). Para modelar el APU asumimos que
  * ese costo base es el Costo Directo Unitario (CD_unit). Aplicamos los
- * factores indirecto y utilidad a nivel de PU según TASK §5.
+ * factor indirecto a nivel de PU según TASK §5. El factor de Utilidad fue
+ * eliminado: el presupuesto estimado se presenta a comité de inversiones y
+ * no incluye margen de utilidad (no es cotización integrador → proveedor).
  */
 function computeApu(item: LineItem, factors: EstimateFactors): ApuBreakdown {
   const costDirectUnit = Number(item.unitCost) || 0;
   const qty = Number(item.quantity) || 0;
-  const { indirectFactor, utilityFactor, ivaRate } = factors;
+  const { indirectFactor, ivaRate } = factors;
 
   // Heurística simple: clasificamos el CD_unit en función de la categoría
   // para mostrar desglose informativo en el modal.
@@ -76,8 +76,7 @@ function computeApu(item: LineItem, factors: EstimateFactors): ApuBreakdown {
   const materialUnit = !isLabor && !isEngineering ? costDirectUnit : 0;
 
   const indirectAmount = costDirectUnit * indirectFactor;
-  const utilityAmount = (costDirectUnit + indirectAmount) * utilityFactor;
-  const puSinIva = costDirectUnit + indirectAmount + utilityAmount;
+  const puSinIva = costDirectUnit + indirectAmount;
   const ivaAmount = puSinIva * ivaRate;
   const puConIva = puSinIva + ivaAmount;
 
@@ -87,7 +86,6 @@ function computeApu(item: LineItem, factors: EstimateFactors): ApuBreakdown {
     engineeringUnit: round2(engineeringUnit),
     costDirectUnit: round2(costDirectUnit),
     indirectAmount: round2(indirectAmount),
-    utilityAmount: round2(utilityAmount),
     puSinIva: round2(puSinIva),
     ivaAmount: round2(ivaAmount),
     puConIva: round2(puConIva),
@@ -112,7 +110,6 @@ const CATEGORY_VARIANT: Record<string, string> = {
 export default function ApuDialog({ item, factors, currency, systemLabel }: ApuDialogProps) {
   const apu = computeApu(item, factors);
   const indirectPct = (factors.indirectFactor * 100).toFixed(1);
-  const utilityPct = (factors.utilityFactor * 100).toFixed(1);
   const ivaPct = (factors.ivaRate * 100).toFixed(1);
 
   return (
@@ -211,12 +208,6 @@ export default function ApuDialog({ item, factors, currency, systemLabel }: ApuD
             <Row
               label={`Indirectos (${indirectPct}%)`}
               value={apu.indirectAmount}
-              currency={currency}
-              indent
-            />
-            <Row
-              label={`Utilidad (${utilityPct}%) sobre (CD + Ind)`}
-              value={apu.utilityAmount}
               currency={currency}
               indent
             />
