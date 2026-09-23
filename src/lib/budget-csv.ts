@@ -25,7 +25,6 @@ export function buildBudgetCsvContent(params: {
   result: {
     subtotalDirect: number;
     subtotalIndirects: number;
-    subtotalUtility: number;
     grandTotal: number;
     iva: number;
     totalWithIva: number;
@@ -119,7 +118,6 @@ export function buildBudgetCsvContent(params: {
     (params.result.subtotalDirect ?? 0).toFixed(2),
   ]);
   rows.push(["Costos Indirectos", "", "", "", "", "", "", "", "", (params.result.subtotalIndirects ?? 0).toFixed(2)]);
-  rows.push(["Utilidad", "", "", "", "", "", "", "", "", (params.result.subtotalUtility ?? 0).toFixed(2)]);
   rows.push(["GRAN TOTAL (sin IVA)", "", "", "", "", "", "", "", "", (params.result.grandTotal ?? 0).toFixed(2)]);
   rows.push(["IVA", "", "", "", "", "", "", "", "", (params.result.iva ?? 0).toFixed(2)]);
   rows.push(["TOTAL CON IVA", "", "", "", "", "", "", "", "", (params.result.totalWithIva ?? 0).toFixed(2)]);

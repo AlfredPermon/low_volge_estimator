@@ -212,33 +212,6 @@ export default function FactorsPanel() {
             />
           </div>
 
-          {/* Utility Factor */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                Utilidad
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="w-3 h-3 text-stone-400" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-xs">
-                    Margen de utilidad y financiamiento del proyecto.
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
-              <Percent className="w-3.5 h-3.5 text-stone-400" />
-            </div>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={(factors.utilityFactor * 100).toFixed(0)}
-              onChange={(e) => updateField('utilityFactor', e.target.value, (v) => v / 100)}
-              className="h-8 text-sm"
-            />
-          </div>
-
           {/* IVA Rate (TASK §9.1) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -314,7 +287,7 @@ export default function FactorsPanel() {
                 L_canal = Dist × Qty × (1 + F_canal)
               </p>
               <p className="text-[11px] text-stone-500 font-mono">
-                C_total = (Mat + MO + Ing) × (1 + Ind) × (1 + Util)
+                C_total = (Mat + MO + Ing) × (1 + Ind)
               </p>
               <p className="text-[11px] text-stone-500 font-mono">
                 Total con IVA = C_total × (1 + IVA)

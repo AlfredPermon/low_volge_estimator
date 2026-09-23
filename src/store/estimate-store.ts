@@ -117,7 +117,6 @@ export interface EstimateFactors {
   verticalDrop: number;
   rackAllowance: number;
   indirectFactor: number;
-  utilityFactor: number;
   /** Política de redondeo global (TASK §10, §11.4). */
   roundingPolicy: RoundingPolicy;
   /** Tasa de IVA (TASK §9.1, §10). */
@@ -152,7 +151,6 @@ export interface CalculationResult {
   subtotalEngineering: number;
   subtotalDirect: number;
   subtotalIndirects: number;
-  subtotalUtility: number;
   grandTotal: number;
   iva: number;
   totalWithIva: number;
@@ -722,7 +720,6 @@ function normalizeFloorplanConfig(raw: unknown): FloorplanItem {
 function recalcFromLineItems(
   lineItems: LineItem[],
   indirectFactor: number,
-  utilityFactor: number,
   ivaRate: number,
   roundingPolicy: RoundingPolicy
 ) {
@@ -741,9 +738,10 @@ function recalcFromLineItems(
   const subtotalLabor = r(labor);
   const subtotalEngineering = r(engineering);
   const subtotalDirect = r(materials + labor + engineering + services);
+  // Utilidad eliminada del paramétrico (presupuesto estimado para comité
+  // de inversiones): GT = Directo + Indirectos.
   const subtotalIndirects = r(subtotalDirect * indirectFactor);
-  const subtotalUtility = r((subtotalDirect + subtotalIndirects) * utilityFactor);
-  const grandTotal = r(subtotalDirect + subtotalIndirects + subtotalUtility);
+  const grandTotal = r(subtotalDirect + subtotalIndirects);
   const iva = r(grandTotal * ivaRate);
   const totalWithIva = r(grandTotal + iva);
   return {
@@ -752,7 +750,6 @@ function recalcFromLineItems(
     subtotalEngineering,
     subtotalDirect,
     subtotalIndirects,
-    subtotalUtility,
     grandTotal,
     iva,
     totalWithIva,
@@ -877,7 +874,6 @@ const defaultFactors: EstimateFactors = {
   verticalDrop: 3.0,
   rackAllowance: 5.0,
   indirectFactor: 0.12,
-  utilityFactor: 0.15,
   roundingPolicy: 2,
   ivaRate: 0.16,
   // A2 - Mano de obra por cuadrilla
@@ -1321,11 +1317,10 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       return;
     }
     const lineItems = result.lineItems.map(normalizeLineItem);
-    const { indirectFactor, utilityFactor, ivaRate, roundingPolicy } = get().factors;
+    const { indirectFactor, ivaRate, roundingPolicy } = get().factors;
     const recalc = recalcFromLineItems(
       lineItems,
       indirectFactor,
-      utilityFactor,
       ivaRate,
       roundingPolicy
     );
@@ -1338,13 +1333,11 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
     const rawItems = (data.lineItems as Array<LineItem | (LineItem & { totalAmount?: number })>) || [];
     const lineItems = rawItems.map(normalizeLineItem);
     const indirectFactor = (data.indirectFactor as number) ?? defaultFactors.indirectFactor;
-    const utilityFactor = (data.utilityFactor as number) ?? defaultFactors.utilityFactor;
     const ivaRate = (data.ivaRate as number) ?? defaultFactors.ivaRate;
     const roundingPolicy = ((data.roundingPolicy as number) ?? defaultFactors.roundingPolicy) as RoundingPolicy;
     const recalc = recalcFromLineItems(
       lineItems,
       indirectFactor,
-      utilityFactor,
       ivaRate,
       roundingPolicy
     );
@@ -1384,7 +1377,6 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
         verticalDrop: (data.verticalDrop as number) ?? defaultFactors.verticalDrop,
         rackAllowance: (data.rackAllowance as number) ?? defaultFactors.rackAllowance,
         indirectFactor,
-        utilityFactor,
         ivaRate,
         roundingPolicy,
         // A2
@@ -1449,7 +1441,6 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
     const recalc = recalcFromLineItems(
       lineItems,
       state.factors.indirectFactor,
-      state.factors.utilityFactor,
       state.factors.ivaRate,
       state.factors.roundingPolicy
     );
@@ -1458,7 +1449,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   addLineItem: (newItemData) => {
     const state = get();
     if (!state.result) return;
-    const { indirectFactor, utilityFactor, ivaRate, roundingPolicy } = state.factors;
+    const { indirectFactor, ivaRate, roundingPolicy } = state.factors;
 
     const id = newItemData.id || genId();
     const quantity = Number(newItemData.quantity) || 0;
@@ -1495,7 +1486,6 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
     const recalc = recalcFromLineItems(
       lineItems,
       indirectFactor,
-      utilityFactor,
       ivaRate,
       roundingPolicy
     );
@@ -1504,14 +1494,13 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   removeLineItem: (id) => {
     const state = get();
     if (!state.result) return;
-    const { indirectFactor, utilityFactor, ivaRate, roundingPolicy } = state.factors;
+    const { indirectFactor, ivaRate, roundingPolicy } = state.factors;
 
     const filtered = state.result.lineItems.filter((it) => it.id !== id);
     const lineItems = reindexPartidas(filtered);
     const recalc = recalcFromLineItems(
       lineItems,
       indirectFactor,
-      utilityFactor,
       ivaRate,
       roundingPolicy
     );
@@ -1544,7 +1533,6 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
           subtotalEngineering: state.result.subtotalEngineering,
           subtotalDirect: state.result.subtotalDirect,
           subtotalIndirects: state.result.subtotalIndirects,
-          subtotalUtility: state.result.subtotalUtility,
           grandTotal: state.result.grandTotal,
           iva: state.result.iva,
           totalWithIva: state.result.totalWithIva,
@@ -1605,8 +1593,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       const subtotalEngineering = Number(parsed.subtotalEngineering) || 0;
       const subtotalDirect = Number(parsed.subtotalDirect) || (subtotalMaterials + subtotalLabor + subtotalEngineering);
       const subtotalIndirects = Number(parsed.subtotalIndirects) || 0;
-      const subtotalUtility = Number(parsed.subtotalUtility) || 0;
-      const grandTotal = Number(parsed.grandTotal) || (subtotalDirect + subtotalIndirects + subtotalUtility);
+      const grandTotal = Number(parsed.grandTotal) || (subtotalDirect + subtotalIndirects);
       const iva = Number(parsed.iva) || 0;
       const totalWithIva = Number(parsed.totalWithIva) || (grandTotal + iva);
 
@@ -1617,7 +1604,6 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
         subtotalEngineering,
         subtotalDirect,
         subtotalIndirects,
-        subtotalUtility,
         grandTotal,
         iva,
         totalWithIva,

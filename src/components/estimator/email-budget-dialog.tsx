@@ -87,7 +87,6 @@ Por medio del presente correo, me permito compartirles la Propuesta Económica y
 --------------------------------------------------
   * Subtotal Directo (Materiales + M.O.) : ${formatCurrency(result.subtotalDirect, currency)}
   * Costos Indirectos                    : ${formatCurrency(result.subtotalIndirects, currency)}
-  * Utilidad                             : ${formatCurrency(result.subtotalUtility, currency)}
 --------------------------------------------------
   * GRAN TOTAL (Sin IVA)                 : ${formatCurrency(result.grandTotal, currency)}
   * IVA (16%)                            : ${formatCurrency(result.iva, currency)}
@@ -486,10 +485,6 @@ export default function EmailBudgetDialog({
                     <div className="flex items-center justify-between px-4 py-2 text-stone-300">
                       <span>Costos Indirectos:</span>
                       <span className="font-mono font-medium">{formatCurrency(result.subtotalIndirects, meta.currency || 'MXN')}</span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-2 text-stone-300">
-                      <span>Utilidad:</span>
-                      <span className="font-mono font-medium">{formatCurrency(result.subtotalUtility, meta.currency || 'MXN')}</span>
                     </div>
                     <div className="flex items-center justify-between px-4 py-2 bg-amber-950/20 text-amber-300 font-bold">
                       <span>TOTAL CON IVA:</span>
