@@ -92,4 +92,5 @@ target/
 *.tmp
 *.temp
 *.bak
-*.backup
+*.backupdb/*.db
+*.tsbuildinfo
