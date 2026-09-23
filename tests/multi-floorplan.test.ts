@@ -71,7 +71,6 @@ describe('Multi-Floorplan Project Persistence and Calculation Engine', () => {
       verticalDrop: 3.0,
       rackAllowance: 5.0,
       indirectFactor: 0.12,
-      utilityFactor: 0.15,
       roundingPolicy: 2,
       ivaRate: 0.16,
     };
