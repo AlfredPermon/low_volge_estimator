@@ -23,10 +23,9 @@ describe("budget-csv", () => {
       result: {
         subtotalDirect: 100,
         subtotalIndirects: 12,
-        subtotalUtility: 16.8,
-        grandTotal: 128.8,
-        iva: 20.61,
-        totalWithIva: 149.41,
+        grandTotal: 112,
+        iva: 17.92,
+        totalWithIva: 129.92,
       },
       meta: { name: "Test", clientName: "Cliente", projectName: "Proyecto" },
       notes: "Nota general",

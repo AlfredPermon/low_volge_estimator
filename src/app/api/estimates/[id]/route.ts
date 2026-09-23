@@ -34,7 +34,6 @@ const updateEstimateSchema = z.object({
   verticalDrop: z.number().min(0).optional(),
   rackAllowance: z.number().min(0).optional(),
   indirectFactor: z.number().min(0).max(1).optional(),
-  utilityFactor: z.number().min(0).max(1).optional(),
   ivaRate: z.number().min(0).max(1).optional(),
   roundingPolicy: z.number().int().min(0).max(6).optional(),
   laborTechnicianRate: z.number().min(0).optional(),
@@ -65,7 +64,6 @@ function configsChanged(
     newData.wasteFactorCable !== undefined ||
     newData.wasteFactorConduit !== undefined ||
     newData.indirectFactor !== undefined ||
-    newData.utilityFactor !== undefined ||
     newData.ivaRate !== undefined ||
     newData.roundingPolicy !== undefined ||
     newData.verticalDrop !== undefined ||
@@ -87,7 +85,6 @@ async function recalcEstimate(estimateId: string) {
     verticalDrop: estimate.verticalDrop,
     rackAllowance: estimate.rackAllowance,
     indirectFactor: estimate.indirectFactor,
-    utilityFactor: estimate.utilityFactor,
     ivaRate: estimate.ivaRate,
     roundingPolicy: (estimate.roundingPolicy ?? 2) as 0 | 1 | 2 | 3 | 4,
     laborRates: {
@@ -144,7 +141,6 @@ async function recalcEstimate(estimateId: string) {
       subtotalEngineering: result.subtotalEngineering,
       subtotalDirect: result.subtotalDirect,
       subtotalIndirects: result.subtotalIndirects,
-      subtotalUtility: result.subtotalUtility,
       grandTotal: result.grandTotal,
       iva: result.iva,
       totalWithIva: result.totalWithIva,
@@ -248,7 +244,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (data.verticalDrop !== undefined) updateData.verticalDrop = data.verticalDrop;
     if (data.rackAllowance !== undefined) updateData.rackAllowance = data.rackAllowance;
     if (data.indirectFactor !== undefined) updateData.indirectFactor = data.indirectFactor;
-    if (data.utilityFactor !== undefined) updateData.utilityFactor = data.utilityFactor;
     if (data.ivaRate !== undefined) updateData.ivaRate = data.ivaRate;
     if (data.roundingPolicy !== undefined) updateData.roundingPolicy = data.roundingPolicy;
     if (data.laborTechnicianRate !== undefined) updateData.laborTechnicianRate = data.laborTechnicianRate;
@@ -323,7 +318,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         subtotalEngineering: updated.subtotalEngineering,
         subtotalDirect: updated.subtotalDirect,
         subtotalIndirects: updated.subtotalIndirects,
-        subtotalUtility: updated.subtotalUtility,
         grandTotal: updated.grandTotal,
         iva: updated.iva,
         totalWithIva: updated.totalWithIva,

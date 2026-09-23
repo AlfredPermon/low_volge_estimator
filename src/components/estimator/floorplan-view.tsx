@@ -205,7 +205,6 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
           verticalDrop: store.factors.verticalDrop,
           rackAllowance: store.factors.rackAllowance,
           indirectFactor: store.factors.indirectFactor,
-          utilityFactor: store.factors.utilityFactor,
           ivaRate: store.factors.ivaRate,
           roundingPolicy: store.factors.roundingPolicy,
           laborTechnicianRate: store.factors.laborRates.technician,

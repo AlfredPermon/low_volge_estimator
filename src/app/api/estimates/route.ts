@@ -17,7 +17,6 @@ const createEstimateSchema = z.object({
   verticalDrop: z.number().min(0).default(3.0),
   rackAllowance: z.number().min(0).default(5.0),
   indirectFactor: z.number().min(0).max(1).default(0.12),
-  utilityFactor: z.number().min(0).max(1).default(0.15),
   ivaRate: z.number().min(0).max(1).default(0.16),
   roundingPolicy: z.number().int().min(0).max(6).default(2),
   // A2 - Mano de obra por cuadrilla
@@ -94,7 +93,6 @@ export async function POST(request: NextRequest) {
         verticalDrop: parsed.data.verticalDrop,
         rackAllowance: parsed.data.rackAllowance,
         indirectFactor: parsed.data.indirectFactor,
-        utilityFactor: parsed.data.utilityFactor,
         ivaRate: parsed.data.ivaRate,
         roundingPolicy: parsed.data.roundingPolicy,
         laborTechnicianRate: parsed.data.laborTechnicianRate,
