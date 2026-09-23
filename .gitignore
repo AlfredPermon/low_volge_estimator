@@ -94,3 +94,4 @@ target/
 *.bak
 *.backupdb/*.db
 *.tsbuildinfo
+db/staging.db
