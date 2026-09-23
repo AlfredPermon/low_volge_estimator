@@ -262,6 +262,14 @@ interface EstimateStore {
   responsible: string;
   notes: string;
   factorsNotes: string;
+  // Fechas del proyecto
+  startDate: string;
+  endDate: string;
+  // Responsables por departamento
+  techResponsable: string;
+  envResponsable: string;
+  riskResponsable: string;
+  projectManager: string;
 
   // System configs & Building Levels
   buildingLevels: BuildingLevel[];
@@ -307,6 +315,13 @@ interface EstimateStore {
   setResponsible: (name: string) => void;
   setNotes: (notes: string) => void;
   setFactorsNotes: (notes: string) => void;
+  // Fechas y responsables
+  setStartDate: (date: string) => void;
+  setEndDate: (date: string) => void;
+  setTechResponsable: (name: string) => void;
+  setEnvResponsable: (name: string) => void;
+  setRiskResponsable: (name: string) => void;
+  setProjectManager: (name: string) => void;
   setCctvConfig: (config: CctvConfig) => void;
   setAccessConfig: (config: AccessConfig) => void;
   setPagingConfig: (config: PagingConfig) => void;
@@ -916,6 +931,12 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   responsible: "",
   notes: "",
   factorsNotes: "",
+  startDate: "",
+  endDate: "",
+  techResponsable: "",
+  envResponsable: "",
+  riskResponsable: "",
+  projectManager: "",
 
   buildingLevels: DEFAULT_BUILDING_LEVELS,
   cctvConfig: defaultCctv,
@@ -946,6 +967,12 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   setResponsible: (responsible) => set({ responsible }),
   setNotes: (notes) => set({ notes }),
   setFactorsNotes: (factorsNotes) => set({ factorsNotes }),
+  setStartDate: (startDate) => set({ startDate }),
+  setEndDate: (endDate) => set({ endDate }),
+  setTechResponsable: (techResponsable) => set({ techResponsable }),
+  setEnvResponsable: (envResponsable) => set({ envResponsable }),
+  setRiskResponsable: (riskResponsable) => set({ riskResponsable }),
+  setProjectManager: (projectManager) => set({ projectManager }),
   setCctvConfig: (cctvConfig) => set({ cctvConfig }),
   setAccessConfig: (accessConfig) => set({ accessConfig }),
   setPagingConfig: (pagingConfig) => set({ pagingConfig }),
@@ -1336,6 +1363,12 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       responsible: (data.responsible as string) || "",
       notes: (data.notes as string) || "",
       factorsNotes: (data.factorsNotes as string) || "",
+      startDate: (data.startDate as string) || "",
+      endDate: (data.endDate as string) || "",
+      techResponsable: (data.techResponsable as string) || "",
+      envResponsable: (data.envResponsable as string) || "",
+      riskResponsable: (data.riskResponsable as string) || "",
+      projectManager: (data.projectManager as string) || "",
       buildingLevels: normFp.buildingLevels,
       cctvConfig: normalizeCctvConfig(data.cctvConfig),
       accessConfig: normalizeAccessConfig(data.accessConfig),
@@ -1380,6 +1413,12 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       responsible: "",
       notes: "",
       factorsNotes: "",
+      startDate: "",
+      endDate: "",
+      techResponsable: "",
+      envResponsable: "",
+      riskResponsable: "",
+      projectManager: "",
       cctvConfig: defaultCctv,
       accessConfig: defaultAccess,
       pagingConfig: defaultPaging,
