@@ -617,6 +617,42 @@ export default function Home() {
       .slice(0, 25);
   }, [orderedEstimates, recentEntriesById, recentSearch, recentStatus, recentDate]);
 
+  // ─── Step Completion Validation ────────────────────────────────────────
+  
+  const isStepComplete = useCallback((stepIndex: number): boolean => {
+    switch (stepIndex) {
+      case 0: // Proyecto
+        return store.name.trim().length > 0 && store.projectName.trim().length > 0;
+      case 1: // CCTV
+        return store.cctvConfig.cameras.length > 0;
+      case 2: // Acceso
+        return store.accessConfig.doors > 0;
+      case 3: // Voceo
+        return store.pagingConfig.speakers.length > 0;
+      case 4: // Incendio
+        return store.fireConfig.smokeDetectors > 0 || store.fireConfig.heatDetectors > 0 || store.fireConfig.manualStations > 0 || store.fireConfig.strobes > 0 || store.fireConfig.hornStrobes > 0 || store.fireConfig.coDetectors > 0;
+      case 5: // Factores
+        return true; // Los factores tienen valores por defecto
+      case 6: // Mano de Obra
+        return true; // La mano de obra es opcional o tiene valores por defecto
+      case 7: // Validaciones
+        return true; // Las validaciones son el último paso
+      default:
+        return false;
+    }
+  }, [store.name, store.projectName, store.cctvConfig.cameras, store.accessConfig.doors, store.pagingConfig.speakers, store.fireConfig.smokeDetectors, store.fireConfig.heatDetectors, store.fireConfig.manualStations, store.fireConfig.strobes, store.fireConfig.hornStrobes, store.fireConfig.coDetectors]);
+
+  const handleStepClick = useCallback((stepIndex: number) => {
+    // Verificar si los pasos anteriores están completos
+    for (let i = 0; i < stepIndex; i++) {
+      if (!isStepComplete(i)) {
+        toast.error(`Proceso no iniciado: ${WIZARD_STEPS[i].label} está incompleto`);
+        return;
+      }
+    }
+    setWizardStep(stepIndex);
+  }, [isStepComplete]);
+
   // ─── Wizard Sub-components ─────────────────────────────────────────────
 
   const renderProjectInfoForm = () => (
@@ -678,15 +714,113 @@ export default function Home() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="responsible" className="text-sm font-medium text-stone-700">Responsable</Label>
+        <Label htmlFor="projectManager" className="text-sm font-medium text-stone-700 flex items-center gap-2">
+          <Briefcase className="w-4 h-4" /> Project Manager
+        </Label>
         <Input
-          id="responsible"
-          value={store.responsible}
-          onChange={(e) => store.setResponsible(e.target.value)}
-          placeholder="Nombre del responsable"
+          id="projectManager"
+          value={store.projectManager}
+          onChange={(e) => store.setProjectManager(e.target.value)}
+          placeholder="Nombre del Project Manager"
           className="h-10"
         />
       </div>
+      
+      {/* Fechas del Proyecto */}
+      <div className="space-y-2">
+        <Label htmlFor="startDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
+          <CalendarDays className="w-4 h-4" /> Fecha Inicio
+        </Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal h-10",
+                !store.startDate && "text-muted-foreground"
+              )}
+            >
+              <CalendarDays className="mr-2 h-4 w-4" />
+              {store.startDate ? new Date(store.startDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={store.startDate ? new Date(store.startDate) : undefined}
+              onSelect={(date) => date && store.setStartDate(date.toISOString())}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="endDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
+          <CalendarDays className="w-4 h-4" /> Fecha Final
+        </Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal h-10",
+                !store.endDate && "text-muted-foreground"
+              )}
+            >
+              <CalendarDays className="mr-2 h-4 w-4" />
+              {store.endDate ? new Date(store.endDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={store.endDate ? new Date(store.endDate) : undefined}
+              onSelect={(date) => date && store.setEndDate(date.toISOString())}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Responsables por Departamento */}
+      <div className="space-y-2 sm:col-span-2">
+        <Label className="text-sm font-medium text-stone-700 flex items-center gap-2">
+          <Users className="w-4 h-4" /> Responsables por Departamento
+        </Label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+          <div className="space-y-1">
+            <Label htmlFor="techResponsable" className="text-xs font-medium text-stone-600">Tecnologías de Seguridad</Label>
+            <Input
+              id="techResponsable"
+              value={store.techResponsable}
+              onChange={(e) => store.setTechResponsable(e.target.value)}
+              placeholder="Nombre del responsable"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="envResponsable" className="text-xs font-medium text-stone-600">Medio Ambiente</Label>
+            <Input
+              id="envResponsable"
+              value={store.envResponsable}
+              onChange={(e) => store.setEnvResponsable(e.target.value)}
+              placeholder="Nombre del responsable"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="riskResponsable" className="text-xs font-medium text-stone-600">Control de Riesgos</Label>
+            <Input
+              id="riskResponsable"
+              value={store.riskResponsable}
+              onChange={(e) => store.setRiskResponsable(e.target.value)}
+              placeholder="Nombre del responsable"
+              className="h-9 text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="notes" className="text-sm font-medium text-stone-700">Observaciones</Label>
         <textarea
@@ -766,7 +900,7 @@ export default function Home() {
       </header>
 
       {/* ── Main Navigation Tabs ─────────────────────────────────────── */}
-      <div className="bg-white border-b border-stone-200">
+      <div className="bg-white border-b border-stone-200 sticky top-16 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
             <TabsList className="bg-transparent h-12 p-0 gap-1 w-full justify-start overflow-x-auto custom-scrollbar flex-nowrap shrink-0">
@@ -852,7 +986,12 @@ export default function Home() {
                     {/* Stepper Header */}
                     <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-stone-200 shadow-sm overflow-x-auto">
                       {WIZARD_STEPS.map((s, i) => (
-                        <div key={s.id} className="flex items-center min-w-max px-2">
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleStepClick(i)}
+                          className="flex items-center min-w-max px-2 hover:bg-stone-50 rounded-lg transition-colors"
+                        >
                           <div
                             className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold mr-2
                               ${i < wizardStep ? 'bg-emerald-600 text-white' : i === wizardStep ? 'bg-emerald-100 text-emerald-700 border border-emerald-600' : 'bg-stone-100 text-stone-400'}`}
@@ -865,7 +1004,7 @@ export default function Home() {
                           {i < WIZARD_STEPS.length - 1 && (
                             <ChevronRight className="w-4 h-4 mx-3 text-stone-300" />
                           )}
-                        </div>
+                        </button>
                       ))}
                     </div>
 
