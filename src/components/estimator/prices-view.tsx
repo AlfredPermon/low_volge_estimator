@@ -58,7 +58,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { formatCurrency } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency, cn } from '@/lib/utils';
 
 import { toast } from 'sonner';
 
@@ -204,6 +205,11 @@ export default function PricesView() {
   const [clearSuccessDialogOpen, setClearSuccessDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
 
+  // --- Bulk deletion selection state ----------------------------------------
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
@@ -257,6 +263,11 @@ export default function PricesView() {
       cancelled = true;
     };
   }, [system, category, search, page, refreshKey]);
+
+  // Resetear selección cuando cambian filtros o página
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [system, category, search, page]);
 
   // --- Handlers ------------------------------------------------------------
   const handleSearch = () => {
@@ -487,8 +498,71 @@ export default function PricesView() {
     refresh();
   };
 
+  // --- Bulk selection handlers ----------------------------------------------
+  const handleToggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((i) => i !== id)
+    );
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allVisibleIds = items.map((it) => it.id);
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allVisibleIds])));
+    } else {
+      const visibleSet = new Set(items.map((it) => it.id));
+      setSelectedIds((prev) => prev.filter((id) => !visibleSet.has(id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0 || bulkDeleting) return;
+    setBulkDeleting(true);
+    try {
+      const res = await fetch('/api/prices', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al eliminar precios seleccionados');
+      }
+
+      const result = await res.json();
+      const count = result.count ?? selectedIds.length;
+
+      toast.success('Precios eliminados', {
+        description: `Se eliminaron ${count} registros correctamente.`,
+      });
+
+      const deletedSet = new Set(selectedIds);
+      setItems((prev) => prev.filter((it) => !deletedSet.has(it.id)));
+      setPagination((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - count),
+      }));
+
+      setSelectedIds([]);
+      setBulkDeleteDialogOpen(false);
+
+      if (items.length <= count && page > 1) {
+        setPage(1);
+      }
+      refresh();
+    } catch (err) {
+      toast.error('Error al eliminar masivamente', {
+        description: err instanceof Error ? err.message : 'Error desconocido',
+      });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handlePriceDeleted = (id: string) => {
     setDeletingPrice(null);
+    setSelectedIds((prev) => prev.filter((i) => i !== id));
     applyLocalMutation('delete', { id });
     // Si la página actual queda vacía tras eliminar (y no estamos en
     // la página 1), ir a la página 1 para evitar mostrar tabla vacía.
@@ -815,11 +889,69 @@ export default function PricesView() {
 
           <Separator />
 
+          {/* ---- Bulk Selection Action Bar --------------------------------- */}
+          <AnimatePresence>
+            {selectedIds.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden mb-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50/90 dark:border-red-900/50 dark:bg-red-950/50 p-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Badge variant="destructive" className="bg-red-600 font-mono text-xs">
+                      {selectedIds.length}
+                    </Badge>
+                    <span className="text-sm font-medium text-red-900 dark:text-red-200">
+                      {selectedIds.length === 1
+                        ? '1 registro seleccionado para eliminación masiva'
+                        : `${selectedIds.length} registros seleccionados para eliminación masiva`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedIds([])}
+                      className="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white text-xs h-8"
+                    >
+                      Deseleccionar todo
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setBulkDeleteDialogOpen(true)}
+                      className="bg-red-600 text-white hover:bg-red-700 shadow-xs h-8 font-medium"
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                      Eliminar seleccionados ({selectedIds.length})
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* ---- Table ------------------------------------------------------ */}
           <div className="max-h-125 overflow-auto rounded-lg border border-emerald-200/60">
             <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow className="bg-emerald-50/80 hover:bg-emerald-50/80">
+                  <TableHead className="sticky top-0 z-10 bg-emerald-50 text-emerald-800 w-12 text-center">
+                    <Checkbox
+                      checked={
+                        items.length > 0 && items.every((it) => selectedIds.includes(it.id))
+                          ? true
+                          : items.some((it) => selectedIds.includes(it.id))
+                          ? 'indeterminate'
+                          : false
+                      }
+                      onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                      aria-label="Seleccionar todos los precios de esta página"
+                    />
+                  </TableHead>
                   <TableHead className="sticky top-0 z-10 bg-emerald-50 text-emerald-800 w-32">
                     SKU
                   </TableHead>
@@ -858,7 +990,7 @@ export default function PricesView() {
                   // Skeleton rows
                   Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={`skel-${i}`} className="hover:bg-transparent">
-                      {Array.from({ length: 10 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full rounded" />
                         </TableCell>
@@ -868,91 +1000,104 @@ export default function PricesView() {
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="h-32 text-center text-emerald-600"
                     >
                       No se encontraron precios con los filtros seleccionados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  items.map((item) => (
-                    <TableRow
-                      key={item.id}
-                      className="transition-colors hover:bg-emerald-50/40"
-                    >
-                      <TableCell className="font-mono text-xs font-medium text-emerald-900">
-                        {item.sku || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={SYSTEM_BADGE_VARIANT[item.system] ?? ''}
-                        >
-                          {item.system}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={CATEGORY_BADGE_VARIANT[item.category] ?? ''}
-                        >
-                          {item.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm truncate">{item.brand || '—'}</TableCell>
-                      <TableCell className="text-sm truncate">{item.model || '—'}</TableCell>
-                      <TableCell
-                        className="text-sm text-muted-foreground min-w-62.5"
-                        title={item.description}
-                      >
-                        <p className="wrap-break-word leading-relaxed line-clamp-2">
-                          {item.description}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-xs text-stone-500 truncate">
-                        {item.deviceType || '—'}
-                      </TableCell>
-                      <TableCell className="text-right text-sm truncate">
-                        {item.unit}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm font-medium text-emerald-800">
-                        {formatCurrency(
-                          Number.isFinite(item.unitCost) ? item.unitCost : 0,
-                          store.currency,
+                  items.map((item) => {
+                    const isSelected = selectedIds.includes(item.id);
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className={cn(
+                          "transition-colors hover:bg-emerald-50/40",
+                          isSelected && "bg-emerald-100/60 hover:bg-emerald-100/70"
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingPriceId(item.id)}
-                            className="h-7 w-7 p-0 text-stone-500 hover:text-emerald-700 hover:bg-emerald-50"
-                            title="Editar precio"
-                            aria-label={`Editar ${item.sku || item.description}`}
+                      >
+                        <TableCell className="text-center w-12">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleToggleSelect(item.id, checked === true)}
+                            aria-label={`Seleccionar ${item.sku || item.description}`}
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs font-medium text-emerald-900">
+                          {item.sku || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={SYSTEM_BADGE_VARIANT[item.system] ?? ''}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              setDeletingPrice({
-                                id: item.id,
-                                description: item.description,
-                                sku: item.sku,
-                              })
-                            }
-                            className="h-7 w-7 p-0 text-stone-500 hover:text-red-600 hover:bg-red-50"
-                            title="Eliminar precio"
-                            aria-label={`Eliminar ${item.sku || item.description}`}
+                            {item.system}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={CATEGORY_BADGE_VARIANT[item.category] ?? ''}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            {item.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm truncate">{item.brand || '—'}</TableCell>
+                        <TableCell className="text-sm truncate">{item.model || '—'}</TableCell>
+                        <TableCell
+                          className="text-sm text-muted-foreground min-w-62.5"
+                          title={item.description}
+                        >
+                          <p className="wrap-break-word leading-relaxed line-clamp-2">
+                            {item.description}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-xs text-stone-500 truncate">
+                          {item.deviceType || '—'}
+                        </TableCell>
+                        <TableCell className="text-right text-sm truncate">
+                          {item.unit}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm font-medium text-emerald-800">
+                          {formatCurrency(
+                            Number.isFinite(item.unitCost) ? item.unitCost : 0,
+                            store.currency,
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingPriceId(item.id)}
+                              className="h-7 w-7 p-0 text-stone-500 hover:text-emerald-700 hover:bg-emerald-50"
+                              title="Editar precio"
+                              aria-label={`Editar ${item.sku || item.description}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setDeletingPrice({
+                                  id: item.id,
+                                  description: item.description,
+                                  sku: item.sku,
+                                })
+                              }
+                              className="h-7 w-7 p-0 text-stone-500 hover:text-red-600 hover:bg-red-50"
+                              title="Eliminar precio"
+                              aria-label={`Eliminar ${item.sku || item.description}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -1017,6 +1162,101 @@ export default function PricesView() {
         onClose={() => setDeletingPrice(null)}
         onDeleted={handlePriceDeleted}
       />
+
+      {/* ── Diálogo de Confirmación: Eliminación Masiva ────────────────────── */}
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Confirmar Eliminación Masiva
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Alert variant="destructive" className="border-red-300 bg-red-50">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="text-red-800">Esta acción no se puede deshacer</AlertTitle>
+              <AlertDescription className="text-red-700 text-sm">
+                Estás a punto de eliminar <strong>{selectedIds.length}</strong>{' '}
+                {selectedIds.length === 1 ? 'precio seleccionado' : 'precios seleccionados'} de la base de datos del catálogo.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
+                Resumen de elementos a eliminar:
+              </p>
+              <div className="max-h-40 overflow-y-auto rounded-md border border-stone-200 bg-stone-50/70 p-2 space-y-1.5">
+                {items
+                  .filter((it) => selectedIds.includes(it.id))
+                  .slice(0, 5)
+                  .map((it) => (
+                    <div
+                      key={it.id}
+                      className="flex items-center justify-between text-xs border-b border-stone-200/60 pb-1 last:border-0 last:pb-0"
+                    >
+                      <div className="truncate pr-2">
+                        <span className="font-mono font-semibold text-stone-800 mr-2">
+                          {it.sku || 'Sin SKU'}
+                        </span>
+                        <span className="text-stone-600 truncate">{truncate(it.description, 40)}</span>
+                      </div>
+                      <span className="font-mono text-emerald-800 text-[11px] shrink-0">
+                        {formatCurrency(it.unitCost, store.currency)}
+                      </span>
+                    </div>
+                  ))}
+
+                {selectedIds.length > 5 && (
+                  <p className="text-[11px] italic text-stone-500 text-center pt-1">
+                    … y {selectedIds.length - 5} elementos más seleccionados.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Alert className="border-amber-300 bg-amber-50">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-800 text-xs font-semibold">Impacto en Presupuestos</AlertTitle>
+              <AlertDescription className="text-amber-700 text-xs">
+                Los presupuestos y cotizaciones existentes <strong>no se verán afectados</strong>, ya que mantienen los totales calculados al momento de su creación.
+              </AlertDescription>
+            </Alert>
+
+            <Separator />
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkDeleteDialogOpen(false)}
+                disabled={bulkDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+              >
+                {bulkDeleting ? (
+                  <>
+                    <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+                    Eliminando ({selectedIds.length})…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                    Eliminar {selectedIds.length} {selectedIds.length === 1 ? 'precio' : 'precios'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Diálogo de Confirmación 1: Advertencia de irreversibilidad ───── */}
       <Dialog open={clearDialog1Open} onOpenChange={setClearDialog1Open}>
