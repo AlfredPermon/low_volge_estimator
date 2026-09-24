@@ -139,6 +139,12 @@ export default function Home() {
     currency: string;
     revision: string;
     responsible: string;
+    projectManager: string;
+    startDate: string;
+    endDate: string;
+    techResponsable: string;
+    envResponsable: string;
+    riskResponsable: string;
     notes: string;
     factorsNotes: string;
   } | null>(null);
@@ -198,10 +204,31 @@ export default function Home() {
       currency: store.currency,
       revision: store.revision,
       responsible: store.responsible,
+      projectManager: store.projectManager,
+      startDate: store.startDate,
+      endDate: store.endDate,
+      techResponsable: store.techResponsable,
+      envResponsable: store.envResponsable,
+      riskResponsable: store.riskResponsable,
       notes: store.notes,
       factorsNotes: store.factorsNotes,
     };
-  }, [store.name, store.clientName, store.projectName, store.currency, store.revision, store.responsible, store.notes, store.factorsNotes]);
+  }, [
+    store.name,
+    store.clientName,
+    store.projectName,
+    store.currency,
+    store.revision,
+    store.responsible,
+    store.projectManager,
+    store.startDate,
+    store.endDate,
+    store.techResponsable,
+    store.envResponsable,
+    store.riskResponsable,
+    store.notes,
+    store.factorsNotes,
+  ]);
 
   // ─── BUDGET-PERSISTENCE: recuperar estimate de sesión anterior ────────
   useEffect(() => {
@@ -245,6 +272,12 @@ export default function Home() {
           currency: state.currency,
           revision: state.revision,
           responsible: state.responsible,
+          projectManager: state.projectManager,
+          startDate: state.startDate,
+          endDate: state.endDate,
+          techResponsable: state.techResponsable,
+          envResponsable: state.envResponsable,
+          riskResponsable: state.riskResponsable,
           notes: state.notes,
           factorsNotes: state.factorsNotes,
           wasteFactorCable: state.factors.wasteFactorCable,
@@ -309,6 +342,12 @@ export default function Home() {
       store.currency !== snap.currency ||
       store.revision !== snap.revision ||
       store.responsible !== snap.responsible ||
+      store.projectManager !== snap.projectManager ||
+      store.startDate !== snap.startDate ||
+      store.endDate !== snap.endDate ||
+      store.techResponsable !== snap.techResponsable ||
+      store.envResponsable !== snap.envResponsable ||
+      store.riskResponsable !== snap.riskResponsable ||
       store.notes !== snap.notes ||
       store.factorsNotes !== snap.factorsNotes;
     if (!changed) return;
@@ -322,6 +361,12 @@ export default function Home() {
     store.currency,
     store.revision,
     store.responsible,
+    store.projectManager,
+    store.startDate,
+    store.endDate,
+    store.techResponsable,
+    store.envResponsable,
+    store.riskResponsable,
     store.notes,
     store.factorsNotes,
     createDraftEstimate,
@@ -345,6 +390,12 @@ export default function Home() {
         currency: store.currency,
         revision: store.revision,
         responsible: store.responsible,
+        projectManager: store.projectManager,
+        startDate: store.startDate,
+        endDate: store.endDate,
+        techResponsable: store.techResponsable,
+        envResponsable: store.envResponsable,
+        riskResponsable: store.riskResponsable,
         notes: store.notes,
         factorsNotes: store.factorsNotes,
         wasteFactorCable: store.factors.wasteFactorCable,

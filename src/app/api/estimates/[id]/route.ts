@@ -27,6 +27,12 @@ const updateEstimateSchema = z.object({
   currency: z.enum(["MXN", "USD"]).optional(),
   revision: z.string().optional(),
   responsible: z.string().optional(),
+  projectManager: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  techResponsable: z.string().optional(),
+  envResponsable: z.string().optional(),
+  riskResponsable: z.string().optional(),
   notes: z.string().optional(),
   factorsNotes: z.string().max(2000).optional(),
   wasteFactorCable: z.number().min(0).max(1).optional(),
@@ -237,6 +243,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (data.currency !== undefined) updateData.currency = data.currency;
     if (data.revision !== undefined) updateData.revision = data.revision;
     if (data.responsible !== undefined) updateData.responsible = data.responsible;
+    if (data.projectManager !== undefined) updateData.projectManager = data.projectManager;
+    if (data.startDate !== undefined) updateData.startDate = data.startDate;
+    if (data.endDate !== undefined) updateData.endDate = data.endDate;
+    if (data.techResponsable !== undefined) updateData.techResponsable = data.techResponsable;
+    if (data.envResponsable !== undefined) updateData.envResponsable = data.envResponsable;
+    if (data.riskResponsable !== undefined) updateData.riskResponsable = data.riskResponsable;
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.factorsNotes !== undefined) updateData.factorsNotes = data.factorsNotes;
     if (data.wasteFactorCable !== undefined) updateData.wasteFactorCable = data.wasteFactorCable;

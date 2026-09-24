@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
-    "test": "node --import tsx --test tests/calculator.test.ts tests/cctv-storage.test.ts tests/utils.test.ts tests/validators.test.ts tests/import-normalizer.test.ts tests/seed-defaults.test.ts tests/prices-crud.test.ts tests/export-filters.test.ts tests/budget-csv.test.ts tests/estimate-notes-db.test.ts tests/schedule-mapper.test.ts tests/schedule-alerts.test.ts tests/schedule-db.test.ts tests/recent-estimates.test.ts tests/extinguisher-seed.test.ts tests/prices-export-import-json.test.ts",
+    "test": "node --import tsx --test tests/calculator.test.ts tests/cctv-storage.test.ts tests/utils.test.ts tests/validators.test.ts tests/import-normalizer.test.ts tests/seed-defaults.test.ts tests/prices-crud.test.ts tests/export-filters.test.ts tests/budget-csv.test.ts tests/estimate-notes-db.test.ts tests/project-fields-db.test.ts tests/schedule-mapper.test.ts tests/schedule-alerts.test.ts tests/schedule-db.test.ts tests/recent-estimates.test.ts tests/extinguisher-seed.test.ts tests/prices-export-import-json.test.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
