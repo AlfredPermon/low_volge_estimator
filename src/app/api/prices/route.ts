@@ -117,3 +117,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create price item" }, { status: 500 });
   }
 }
+
+// ─── DELETE: Bulk delete price items ──────────────────────────────────────
+
+export async function DELETE(request: NextRequest) {
+  try {
+    await ensureDatabaseSchema();
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    if (!hasPermission(user.role, 'SUPERVISOR')) {
+      return NextResponse.json(
+        { error: "Se requieren permisos de Supervisor o Administrador para eliminar precios" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { ids } = body ?? {};
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json(
+        { error: "Se requiere un arreglo 'ids' con al menos un ID" },
+        { status: 400 }
+      );
+    }
+
+    const result = await db.priceItem.deleteMany({
+      where: {
+        id: { in: ids },
+      },
+    });
+
+    return NextResponse.json({ success: true, count: result.count });
+  } catch (error) {
+    console.error("Error bulk deleting price items:", error);
+    return NextResponse.json({ error: "Failed to delete price items" }, { status: 500 });
+  }
+}
