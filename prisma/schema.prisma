@@ -97,6 +97,12 @@ model Estimate {
   currency         String   @default("MXN") // MXN, USD
   revision         String   @default("Rev. 1")
   responsible      String   @default("")
+  projectManager   String   @default("")
+  startDate        String   @default("")
+  endDate          String   @default("")
+  techResponsable  String   @default("")
+  envResponsable   String   @default("")
+  riskResponsable  String   @default("")
   notes            String   @default("")
   factorsNotes     String   @default("")
   // Calculation factors

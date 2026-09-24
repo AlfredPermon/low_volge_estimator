@@ -60,6 +60,24 @@ export async function ensureDatabaseSchema() {
       await db.$executeRawUnsafe('ALTER TABLE Estimate ADD COLUMN userId TEXT;');
       await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Estimate_userId_idx" ON "Estimate"("userId");');
     }
+    if (!estColNames.has('projectManager')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN projectManager TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('startDate')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN startDate TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('endDate')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN endDate TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('techResponsable')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN techResponsable TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('envResponsable')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN envResponsable TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('riskResponsable')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN riskResponsable TEXT NOT NULL DEFAULT '';");
+    }
 
     // 3.b Eliminación del factor "Utilidad" del paramétrico (presupuesto
     // estimado para comité de inversiones: GT = Directo + Indirectos).
