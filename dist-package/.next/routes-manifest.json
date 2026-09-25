@@ -93,6 +93,14 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/schedule/milestones/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/users/[id]",
+      "regex": "^/api/users/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/users/(?<nxtPid>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -121,6 +129,30 @@
       "namedRegex": "^/api(?:/)?$"
     },
     {
+      "page": "/api/auth/login",
+      "regex": "^/api/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/login(?:/)?$"
+    },
+    {
+      "page": "/api/auth/logout",
+      "regex": "^/api/auth/logout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/logout(?:/)?$"
+    },
+    {
+      "page": "/api/auth/me",
+      "regex": "^/api/auth/me(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/me(?:/)?$"
+    },
+    {
+      "page": "/api/auth/seed-admin",
+      "regex": "^/api/auth/seed\\-admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/seed\\-admin(?:/)?$"
+    },
+    {
       "page": "/api/estimates",
       "regex": "^/api/estimates(?:/)?$",
       "routeKeys": {},
@@ -143,6 +175,12 @@
       "regex": "^/api/prices/duplicates(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/prices/duplicates(?:/)?$"
+    },
+    {
+      "page": "/api/prices/export",
+      "regex": "^/api/prices/export(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/prices/export(?:/)?$"
     },
     {
       "page": "/api/prices/import",
@@ -197,6 +235,18 @@
       "regex": "^/api/schedule/milestones(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/schedule/milestones(?:/)?$"
+    },
+    {
+      "page": "/api/users",
+      "regex": "^/api/users(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/users(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
     }
   ],
   "dataRoutes": [],

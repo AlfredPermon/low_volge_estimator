@@ -502,11 +502,12 @@ Aplicacion profesional para estimacion de presupuestos de instalaciones electric
 
 # --- 11. Crear el ZIP ----------------------------------------------------------
 Write-Host ""
-Write-Host "[9] Creando ZIP..." -ForegroundColor Yellow
+Write-Host "[11] Creando ZIP..." -ForegroundColor Yellow
 $sizeBeforeMB = [math]::Round((Get-ChildItem $distDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
 Write-Host "    Tamano del paquete sin comprimir: $sizeBeforeMB MB"
 
-Compress-Archive -Path "$distDir\*" -DestinationPath $zipOut -Force
+if (Test-Path $zipOut) { Remove-Item $zipOut -Force }
+tar -a -cf "$zipOut" -C "$distDir" .
 $zipSizeMB = [math]::Round((Get-Item $zipOut).Length / 1MB, 1)
 
 Write-Host ""
