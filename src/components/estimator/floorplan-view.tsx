@@ -1311,6 +1311,12 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
         d.id === draggingItem.id ? { ...d, x: targetX, y: targetY } : d
       );
       store.setFloorplanConfig({ ...config, devices: updatedDevices });
+    } else if (draggingItem.type === 'emergency_sign') {
+      emergencyStore.updateEmergencyDevice(draggingItem.id, { x: targetX, y: targetY }, config.scaleMetersPerPx || 0.05);
+      const updatedDevices = config.devices.map((d) =>
+        d.id === draggingItem.id ? { ...d, x: targetX, y: targetY } : d
+      );
+      store.setFloorplanConfig({ ...config, devices: updatedDevices });
     } else if (draggingItem.type === 'pathway_node') {
       store.updatePathwayNode(draggingItem.id, targetX, targetY);
     } else if (draggingItem.type === 'pathway_segment' && draggingItem.nodesToMove) {
@@ -1875,7 +1881,10 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                 )}
                 {/* Barra Flotante CAPA ACTIVA EMERGENCY EXIT */}
                 {(selectedSystem === 'emergency_exit' || selectedSystemFilter === 'emergency_exit') && (
-                  <EmergencyExitFloatingToolbar onOpenSummarySheet={() => setShowEmergencySummary(true)} />
+                  <EmergencyExitFloatingToolbar
+                    onOpenSummarySheet={() => setShowEmergencySummary(true)}
+                    onSelectTool={(tool) => setActiveTool(tool as any)}
+                  />
                 )}
                 {/* Lienzo Scrollable con Contenedor de Dimensiones Fijas 1:1 y Navegación Manito */}
                 <div
@@ -2706,10 +2715,10 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                         currentFloorplanId={config.id}
                         selectedId={selectedElement?.id}
                         onMouseDownMarker={(dev, e) => {
-                          if (activeTool === 'select' || activeTool === 'edit_pathway') {
+                          if (activeTool === 'select' || activeTool === 'edit_pathway' || emergencyStore.activeTool === 'SELECT') {
                             const coords = getCanvasCoords(e);
                             setDraggingItem({
-                              type: 'device',
+                              type: 'emergency_sign',
                               id: dev.id,
                               startX: coords.x,
                               startY: coords.y,
@@ -2717,7 +2726,7 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                               itemY: dev.y,
                               hasMoved: false,
                             });
-                            setSelectedElement({ type: 'device', id: dev.id });
+                            setSelectedElement({ type: 'emergency_sign', id: dev.id });
                           }
                         }}
                         onSelectDevice={(dev) => {

@@ -45,6 +45,7 @@ export interface EmergencySignDevice {
   exitType?: EmergencyExitType;
   arrowDirection?: ArrowDirection;
   arrowAngle?: number;
+  customScale?: number;
   viewingDistanceM: number; // Distancia máxima L en metros (5, 10, 15, 20, 30)
   surfaceAreaM2: number; // S >= L^2 / 2000
   widthM: number; // Ancho calculado en metros
@@ -113,6 +114,7 @@ export const EmergencySignDeviceSchema = z.object({
   exitType: EmergencyExitTypeSchema.optional(),
   arrowDirection: ArrowDirectionSchema.optional(),
   arrowAngle: z.number().optional(),
+  customScale: z.number().optional(),
   viewingDistanceM: z.number().default(15),
   surfaceAreaM2: z.number(),
   widthM: z.number(),

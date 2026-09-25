@@ -22,10 +22,12 @@ import { toast } from 'sonner';
 
 interface EmergencyExitFloatingToolbarProps {
   onOpenSummarySheet?: () => void;
+  onSelectTool?: (tool: string) => void;
 }
 
 export function EmergencyExitFloatingToolbar({
   onOpenSummarySheet,
+  onSelectTool,
 }: EmergencyExitFloatingToolbarProps) {
   const store = useEmergencyStore();
 
@@ -37,6 +39,12 @@ export function EmergencyExitFloatingToolbar({
     store.setActiveTool(tool);
     if (category) store.setSelectedCategory(category);
     if (arrowDir) store.setSelectedArrowDirection(arrowDir);
+
+    if (tool === 'SELECT') {
+      if (onSelectTool) onSelectTool('select');
+    } else {
+      if (onSelectTool) onSelectTool('add_device');
+    }
 
     const names: Record<EmergencyToolMode, string> = {
       SELECT: 'Modo Selección',
