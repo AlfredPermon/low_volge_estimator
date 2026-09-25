@@ -401,7 +401,7 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
   
   // Selection and Calibration state
   const [selectedElement, setSelectedElement] = useState<{
-    type: 'rack' | 'device' | 'pathway' | 'pathway_segment' | 'pathway_node';
+    type: 'rack' | 'device' | 'pathway' | 'pathway_segment' | 'pathway_node' | 'emergency_sign';
     id: string;
   } | null>(null);
   const [calibrateStart, setCalibrateStart] = useState<{ x: number; y: number } | null>(null);
@@ -426,7 +426,7 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
 
   // Dragging state with delta offset tracking & drag threshold
   const [draggingItem, setDraggingItem] = useState<{
-    type: 'rack' | 'device' | 'pathway_node' | 'pathway_segment';
+    type: 'rack' | 'device' | 'pathway_node' | 'pathway_segment' | 'emergency_sign';
     id: string;
     startX: number;
     startY: number;
@@ -438,7 +438,8 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
 
   // Floating toolbar & Fullscreen canvas state
   const [isToolbarOpen, setIsToolbarOpen] = useState<boolean>(true);
-  const [isCanvasFullscreen, setIsCanvasFullscreen] = useState<boolean>(false);
+  const isCanvasFullscreen = store.isCanvasFullscreen;
+  const setIsCanvasFullscreen = store.setIsCanvasFullscreen;
 
   // Pan dragging state for "Manito" tool
   const [isPanning, setIsPanning] = useState<boolean>(false);
@@ -451,6 +452,17 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
   });
 
   // Keydown listener: Escape key and Delete / Backspace key handling
+  useEffect(() => {
+    if (isCanvasFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isCanvasFullscreen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isCanvasFullscreen) {
@@ -1871,10 +1883,24 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
               <div
                 className={
                   isCanvasFullscreen
-                    ? 'fixed inset-0 z-50 bg-stone-950/95 backdrop-blur-2xl p-4 flex flex-col h-screen w-screen overflow-hidden select-none'
+                    ? 'fixed inset-0 z-[9999] bg-stone-950/95 backdrop-blur-2xl p-4 flex flex-col h-screen w-screen overflow-hidden select-none'
                     : 'relative w-full h-[540px] bg-stone-900 rounded-xl overflow-hidden border border-stone-800 shadow-inner select-none'
                 }
               >
+                {/* Botón flotante para Restablecer vista cuando está en pantalla completa */}
+                {isCanvasFullscreen && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsCanvasFullscreen(false)}
+                    className="absolute top-4 right-4 z-50 bg-stone-950/80 hover:bg-stone-900 text-stone-200 border-white/20 hover:border-emerald-400/60 shadow-xl backdrop-blur-md text-xs font-bold gap-1.5 px-3 py-1.5 rounded-xl pointer-events-auto"
+                    title="Restaurar vista normal (Esc)"
+                  >
+                    <Minimize2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Restablecer</span>
+                  </Button>
+                )}
+
                 {/* Nueva Barra Flotante CAPA ACTIVA EXTINGUISHER SEED (Esquina Superior Izquierda del Canvas) */}
                 {(selectedSystem === 'extinguisher' || selectedSystemFilter === 'extinguisher') && (
                   <ExtinguisherFloatingToolbar onOpenSummarySheet={() => setShowExtinguisherSummary(true)} />

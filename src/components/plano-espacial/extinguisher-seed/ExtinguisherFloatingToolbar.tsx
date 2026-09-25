@@ -143,7 +143,7 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
 
       {/* ─── Panel Flotante Desplegable Vertical (Vidrio Translúcido con Textos Oscuros/Contrastados de Alta Legibilidad) ─── */}
       <div
-        className={`absolute top-13 left-0 w-[680px] max-w-[calc(100vw-3rem)] transition-all duration-300 ease-out origin-top-left ${
+        className={`absolute top-13 left-0 w-[840px] max-w-[calc(100vw-2rem)] transition-all duration-300 ease-out origin-top-left ${
           isOpen
             ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 scale-95 -translate-y-3 pointer-events-none'
