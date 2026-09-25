@@ -142,3 +142,11 @@
   scrollbar-color: #cbd5e1 rgba(245, 245, 244, 0.6);
 }
 
+/* Ensure Radix UI Portals (Select dropdowns, Popovers) render on top of fullscreen containers (z-[9999]) */
+[data-radix-popper-content-wrapper],
+[data-radix-select-content],
+[data-slot="select-content"] {
+  z-index: 100000 !important;
+}
+
+

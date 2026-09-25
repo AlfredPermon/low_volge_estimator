@@ -57,7 +57,7 @@ export function EmergencyExitFloatingToolbar({
 
       const isInsideToolbar = toolbarRef.current?.contains(target);
       const isInsidePortal = target.closest(
-        '[role="listbox"], [data-radix-popper-content-wrapper], [data-radix-select-content]'
+        '[role="listbox"], [role="option"], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-slot="select-item"], [data-slot="select-trigger"], [data-slot="select-value"]'
       );
 
       if (!isInsideToolbar && !isInsidePortal) {
@@ -396,7 +396,7 @@ export function EmergencyExitFloatingToolbar({
                 <SelectTrigger className="h-7.5 bg-stone-950/80 border-white/20 text-white text-[11px] font-bold hover:bg-stone-900 shadow-sm backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="SALIDA_DE_EMERGENCIA" className="focus:bg-stone-800 font-bold">
                     🚪 SALIDA DE EMERGENCIA
                   </SelectItem>
@@ -428,7 +428,7 @@ export function EmergencyExitFloatingToolbar({
                 <SelectTrigger className="h-7.5 bg-stone-950/80 border-white/20 text-white text-[11px] font-bold hover:bg-stone-900 shadow-sm backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="5" className="focus:bg-stone-800 font-bold">5 m (125 cm² - 15.8x7.9cm)</SelectItem>
                   <SelectItem value="10" className="focus:bg-stone-800 font-bold">10 m (500 cm² - 31.6x15.8cm)</SelectItem>
                   <SelectItem value="15" className="focus:bg-stone-800 font-bold">15 m (1,125 cm² - 47.4x23.7cm)</SelectItem>
@@ -450,7 +450,7 @@ export function EmergencyExitFloatingToolbar({
                 <SelectTrigger className="h-7.5 bg-stone-950/80 border-white/20 text-white text-[11px] font-bold hover:bg-stone-900 shadow-sm backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="RIGHT" className="focus:bg-stone-800 font-bold">➡️ Derecha (→)</SelectItem>
                   <SelectItem value="LEFT" className="focus:bg-stone-800 font-bold">⬅️ Izquierda (←)</SelectItem>
                   <SelectItem value="UP" className="focus:bg-stone-800 font-bold">⬆️ Arriba (↑)</SelectItem>
@@ -475,7 +475,7 @@ export function EmergencyExitFloatingToolbar({
                 <SelectTrigger className="h-7.5 bg-stone-950/80 border-white/20 text-white text-[11px] font-bold hover:bg-stone-900 shadow-sm backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="SOBRE_PUERTA" className="focus:bg-stone-800 font-bold">Sobre Puerta (1.60m-2.20m)</SelectItem>
                   <SelectItem value="ADHERIDO_PARED" className="focus:bg-stone-800 font-bold">Adherido Pared (2.20m)</SelectItem>
                   <SelectItem value="TIPO_BANDERA" className="focus:bg-stone-800 font-bold">Tipo Bandera (2.50m)</SelectItem>
@@ -496,7 +496,7 @@ export function EmergencyExitFloatingToolbar({
                 <SelectTrigger className="h-7.5 bg-stone-950/80 border-white/20 text-white text-[11px] font-bold hover:bg-stone-900 shadow-sm backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="ACRILICO_FOTOLUMINISCENTE" className="focus:bg-stone-800 font-bold">Acrílico Fotoluminiscente</SelectItem>
                   <SelectItem value="VINILO_ADHERIBLE" className="focus:bg-stone-800 font-bold">Vinilo Adherible</SelectItem>
                   <SelectItem value="ALUMINIO_FOTOLUMINISCENTE" className="focus:bg-stone-800 font-bold">Aluminio Fotoluminiscente</SelectItem>

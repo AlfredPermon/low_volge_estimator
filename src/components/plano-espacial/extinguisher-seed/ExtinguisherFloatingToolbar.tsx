@@ -67,7 +67,9 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
       if (!target) return;
 
       const isInsideToolbar = toolbarRef.current?.contains(target);
-      const isInsidePortal = target.closest('[role="listbox"], [data-radix-popper-content-wrapper], [data-radix-select-content]');
+      const isInsidePortal = target.closest(
+        '[role="listbox"], [role="option"], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-slot="select-content"], [data-slot="select-item"], [data-slot="select-trigger"], [data-slot="select-value"]'
+      );
 
       if (!isInsideToolbar && !isInsidePortal) {
         setIsOpen(false);
@@ -234,7 +236,7 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
                 <SelectTrigger className="h-8 bg-stone-950/60 border-white/20 text-white text-xs font-extrabold hover:bg-stone-950/80 shadow-md backdrop-blur-md">
                   <SelectValue placeholder="Seleccione área médica" />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   {Object.values(MEDICAL_AREAS).map((area) => (
                     <SelectItem key={area.id} value={area.id} className="focus:bg-stone-800 focus:text-white">
                       <span className="font-bold">{area.name}</span>
@@ -256,7 +258,7 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
                 <SelectTrigger className="h-8 bg-stone-950/60 border-white/20 text-white text-xs font-extrabold hover:bg-stone-950/80 shadow-md backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   {(Object.keys(AGENT_COLORS) as ExtinguisherType[]).map((t) => (
                     <SelectItem key={t} value={t} className="focus:bg-stone-800 focus:text-white py-1">
                       <div className="flex items-center gap-2">
@@ -278,7 +280,7 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
                 <SelectTrigger className="h-8 bg-stone-950/60 border-white/20 text-white text-xs font-extrabold hover:bg-stone-950/80 shadow-md backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   {(TYPE_CAPACITIES[store.selectedType] || ['5lbs', '6.0kg']).map((cap) => (
                     <SelectItem key={cap} value={cap} className="focus:bg-stone-800 focus:text-white font-bold">
                       {cap}
@@ -297,7 +299,7 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
                 <SelectTrigger className="h-8 bg-stone-950/60 border-white/20 text-white text-xs font-extrabold hover:bg-stone-950/80 shadow-md backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="HIGH_RISK" className="focus:bg-stone-800 font-bold">
                     🔴 Alto Riesgo (Recorrido 15 m)
                   </SelectItem>
@@ -320,7 +322,7 @@ export function ExtinguisherFloatingToolbar({ onOpenSummarySheet }: Extinguisher
                 <SelectTrigger className="h-8 bg-stone-950/60 border-white/20 text-white text-xs font-extrabold hover:bg-stone-950/80 shadow-md backdrop-blur-md">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-50 backdrop-blur-xl">
+                <SelectContent className="bg-stone-950/95 border-white/20 text-white text-xs z-[100000] backdrop-blur-xl">
                   <SelectItem value="EFFECTIVE_2D" className="focus:bg-stone-800 font-bold">
                     🟢 Radio Efectivo 2D (7.5m / 15m)
                   </SelectItem>
