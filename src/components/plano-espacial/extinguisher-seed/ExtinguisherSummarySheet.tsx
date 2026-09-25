@@ -179,7 +179,7 @@ export function ExtinguisherSummarySheet({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="!max-w-none w-[96vw] max-w-[1550px] sm:!max-w-[1550px] max-h-[92vh] overflow-y-auto bg-slate-950/70 dark:bg-stone-950/75 backdrop-blur-2xl border border-white/15 border-orange-500/30 text-stone-100 p-6 sm:p-8 rounded-2xl shadow-[0_16px_48px_0_rgba(0,0,0,0.6)] shadow-orange-950/30">
+        <DialogContent className="w-[94vw] sm:w-[90vw] md:max-w-2xl lg:max-w-3xl max-h-[85vh] sm:max-h-[88vh] overflow-y-auto bg-slate-950/90 dark:bg-stone-950/90 backdrop-blur-2xl border border-white/15 border-orange-500/30 text-stone-100 p-4 sm:p-6 rounded-2xl shadow-[0_16px_48px_0_rgba(0,0,0,0.6)] shadow-orange-950/30 custom-scrollbar">
           
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 10 }}
@@ -195,7 +195,7 @@ export function ExtinguisherSummarySheet({
                     <Flame className="w-7 h-7 animate-pulse" />
                   </div>
                   <div>
-                    <DialogTitle className="text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
+                    <DialogTitle className="text-lg sm:text-xl font-black text-white flex flex-wrap items-center gap-2 tracking-tight">
                       Resumen & Cuantificación Extintores
                       <Badge variant="outline" className="border-orange-500/60 bg-orange-950/70 backdrop-blur-md text-orange-300 font-mono text-xs px-2.5 py-0.5">
                         NOM-002 / NOM-016 / NOM-026
@@ -269,7 +269,7 @@ export function ExtinguisherSummarySheet({
                 {loadingPrices && <RefreshCw className="w-4 h-4 text-orange-400 animate-spin" />}
               </div>
 
-              <div className="border border-white/10 rounded-xl overflow-hidden bg-slate-950/50 backdrop-blur-md shadow-2xl">
+              <div className="border border-white/10 rounded-xl overflow-x-auto bg-slate-950/50 backdrop-blur-md shadow-2xl custom-scrollbar">
                 <Table className="text-xs sm:text-sm">
                   <TableHeader className="bg-white/5 border-b border-white/10">
                     <TableRow className="border-white/10 hover:bg-transparent">

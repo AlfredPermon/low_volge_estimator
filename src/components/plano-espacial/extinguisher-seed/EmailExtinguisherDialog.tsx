@@ -214,8 +214,8 @@ export function EmailExtinguisherDialog({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 'min(1380px, 96vw)',
-            maxHeight: '92vh',
+            width: 'min(1200px, 94vw)',
+            maxHeight: '88vh',
             zIndex: 51,
             display: 'flex',
             flexDirection: 'column',
@@ -226,23 +226,23 @@ export function EmailExtinguisherDialog({
           className="bg-slate-950 text-stone-100 border border-orange-500/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200"
         >
           {/* ══ HEADER ══════════════════════════════════════════════════════ */}
-          <div className="shrink-0 bg-gradient-to-r from-[#0a2e1a] via-[#133d25] to-[#0a2e1a] px-8 py-5 border-b border-emerald-500/30">
+          <div className="shrink-0 bg-gradient-to-r from-[#0a2e1a] via-[#133d25] to-[#0a2e1a] px-5 py-4 sm:px-8 sm:py-5 border-b border-emerald-500/30">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
-                <Flame className="w-6 h-6 text-orange-400 animate-pulse" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+                <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 animate-pulse" />
               </div>
 
               <div className="flex-1 min-w-0">
-                <DialogPrimitive.Title className="text-white font-black text-xl leading-tight tracking-tight flex items-center gap-2.5">
+                <DialogPrimitive.Title className="text-white font-black text-lg sm:text-xl leading-tight tracking-tight flex items-center gap-2.5">
                   Enviar Dictamen Paramétrico de Extintores por Correo
                 </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="text-emerald-300/80 text-sm mt-0.5">
+                <DialogPrimitive.Description className="text-emerald-300/80 text-xs sm:text-sm mt-0.5">
                   Outlook se abrirá con el borrador pre-llenado · El archivo PDF se descargará automáticamente
                 </DialogPrimitive.Description>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
-                <Badge className="bg-orange-500/20 text-orange-200 border border-orange-400/30 text-xs font-bold tracking-wider px-3 py-1">
+                <Badge className="bg-orange-500/20 text-orange-200 border border-orange-400/30 text-xs font-bold tracking-wider px-3 py-1 hidden sm:inline-flex">
                   NOM-002 / 016 / 026
                 </Badge>
                 <DialogPrimitive.Close className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-stone-300 hover:text-white transition-all">
@@ -252,7 +252,7 @@ export function EmailExtinguisherDialog({
             </div>
 
             {/* Strip informativo */}
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-emerald-200/80 font-mono">
+            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-emerald-200/80 font-mono">
               <span className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-orange-400" />
                 {meta.projectName || 'Proyecto General'}
@@ -272,8 +272,8 @@ export function EmailExtinguisherDialog({
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0 bg-slate-950">
 
             {/* ── COLUMNA IZQUIERDA: Formulario ──────────────────────────── */}
-            <div className="lg:w-[490px] shrink-0 flex flex-col border-r border-stone-800 overflow-y-auto">
-              <div className="p-6 space-y-5 flex-1">
+            <div className="lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col border-r border-stone-800 overflow-y-auto">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1">
 
                 <div className="flex items-start gap-3 p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs text-emerald-200 leading-relaxed">
                   <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />

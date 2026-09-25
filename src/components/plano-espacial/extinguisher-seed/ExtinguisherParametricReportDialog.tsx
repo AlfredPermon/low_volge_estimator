@@ -113,7 +113,7 @@ export function ExtinguisherParametricReportDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="!max-w-none w-[96vw] max-w-[1550px] sm:!max-w-[1550px] max-h-[92vh] overflow-y-auto bg-slate-950/70 dark:bg-stone-950/75 backdrop-blur-2xl border border-white/15 border-orange-500/30 text-stone-100 p-6 sm:p-8 rounded-2xl shadow-[0_16px_48px_0_rgba(0,0,0,0.6)] shadow-orange-950/30 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:max-h-none print:w-full print:max-w-none print:rounded-none">
+        <DialogContent className="w-[95vw] max-w-6xl xl:max-w-7xl max-h-[85vh] sm:max-h-[88vh] overflow-y-auto bg-slate-950/90 dark:bg-stone-950/90 backdrop-blur-2xl border border-white/15 border-orange-500/30 text-stone-100 p-4 sm:p-6 lg:p-7 rounded-2xl shadow-[0_16px_48px_0_rgba(0,0,0,0.6)] shadow-orange-950/30 custom-scrollbar print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:max-h-none print:w-full print:max-w-none print:rounded-none">
           
           {/* Estilos CSS para Impresión Directa / Generación de PDF */}
           <style>{`
@@ -171,8 +171,8 @@ export function ExtinguisherParametricReportDialog({
                   <Flame className="w-7 h-7" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-xl sm:text-2xl font-black text-white print:text-black tracking-tight">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-black text-white print:text-black tracking-tight">
                       Estimación Paramétrica de Extintores & Protección Contra Incendio
                     </h2>
                     <Badge variant="outline" className="border-orange-500/60 bg-orange-950/70 text-orange-300 print:border-orange-600 print:bg-orange-100 print:text-orange-900 font-mono text-xs px-2.5 py-0.5">
@@ -256,7 +256,7 @@ export function ExtinguisherParametricReportDialog({
                 <span className="text-xs text-stone-400 print:text-stone-600 font-mono">Sistema EXTINTOR / INCENDIO</span>
               </div>
 
-              <div className="border border-white/10 print:border-stone-400 rounded-xl overflow-hidden bg-slate-950/50 backdrop-blur-md print:bg-white shadow-xl print:shadow-none">
+              <div className="border border-white/10 print:border-stone-400 rounded-xl overflow-x-auto bg-slate-950/50 backdrop-blur-md print:bg-white shadow-xl print:shadow-none custom-scrollbar">
                 <Table className="text-xs sm:text-sm">
                   <TableHeader className="bg-white/5 print:bg-stone-200">
                     <TableRow className="border-white/10 print:border-stone-400">
