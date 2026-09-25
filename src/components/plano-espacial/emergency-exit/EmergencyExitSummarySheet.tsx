@@ -123,8 +123,8 @@ export function EmergencyExitSummarySheet({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl bg-stone-900 text-stone-100 border-stone-800 p-6 rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto custom-scrollbar">
-          <DialogHeader className="border-b border-stone-800 pb-4">
+        <DialogContent className="w-[94vw] sm:w-[90vw] md:max-w-2xl lg:max-w-3xl max-h-[85vh] sm:max-h-[88vh] overflow-y-auto bg-stone-900 text-stone-100 border-stone-800 p-4 sm:p-6 rounded-2xl shadow-2xl custom-scrollbar">
+          <DialogHeader className="border-b border-stone-800 pb-3 sm:pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-emerald-950 border border-emerald-600/50 rounded-xl text-emerald-400">
