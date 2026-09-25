@@ -887,70 +887,73 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-stone-50">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo & Title */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-stone-800 leading-tight">Low-Voltage Estimator</h1>
-                <p className="text-xs text-stone-500 hidden sm:block">Estimador de Costos de Bajo Voltaje</p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleNew} className="gap-1.5 text-stone-600">
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Nuevo</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-stone-600">
-                <Save className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{saving ? 'Guardando...' : 'Guardar'}</span>
-              </Button>
-
-              {currentUser && (
-                <div className="flex items-center gap-2 pl-2 border-l border-stone-200 ml-1">
-                  <div className="hidden md:flex flex-col text-right">
-                    <span className="text-xs font-semibold text-stone-800 leading-tight">{currentUser.name}</span>
-                    <span className="text-[10px] text-stone-500">{currentUser.email}</span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] uppercase font-bold px-2 py-0.5 ${
-                      currentUser.role === 'ADMINISTRADOR'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : currentUser.role === 'SUPERVISOR'
-                          ? 'bg-amber-50 text-amber-700 border-amber-300'
-                          : 'bg-stone-100 text-stone-700 border-stone-300'
-                    }`}
-                  >
-                    {currentUser.role}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogout}
-                    title="Cerrar Sesión"
-                    className="text-stone-500 hover:text-red-600 hover:bg-red-50 p-2 h-8 w-8"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </Button>
+      {!store.isCanvasFullscreen && (
+        <header className="bg-white border-b border-stone-200 sticky top-0 z-50 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* Logo & Title */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
                 </div>
-              )}
+                <div>
+                  <h1 className="text-lg font-bold text-stone-800 leading-tight">Low-Voltage Estimator</h1>
+                  <p className="text-xs text-stone-500 hidden sm:block">Estimador de Costos de Bajo Voltaje</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleNew} className="gap-1.5 text-stone-600">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Nuevo</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-stone-600">
+                  <Save className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{saving ? 'Guardando...' : 'Guardar'}</span>
+                </Button>
+
+                {currentUser && (
+                  <div className="flex items-center gap-2 pl-2 border-l border-stone-200 ml-1">
+                    <div className="hidden md:flex flex-col text-right">
+                      <span className="text-xs font-semibold text-stone-800 leading-tight">{currentUser.name}</span>
+                      <span className="text-[10px] text-stone-500">{currentUser.email}</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] uppercase font-bold px-2 py-0.5 ${
+                        currentUser.role === 'ADMINISTRADOR'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : currentUser.role === 'SUPERVISOR'
+                            ? 'bg-amber-50 text-amber-700 border-amber-300'
+                            : 'bg-stone-100 text-stone-700 border-stone-300'
+                      }`}
+                    >
+                      {currentUser.role}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLogout}
+                      title="Cerrar Sesión"
+                      className="text-stone-500 hover:text-red-600 hover:bg-red-50 p-2 h-8 w-8"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* ── Main Navigation Tabs ─────────────────────────────────────── */}
-      <div className="bg-white border-b border-stone-200 sticky top-16 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={store.isCanvasFullscreen ? 'w-full h-full flex-1' : 'bg-white border-b border-stone-200 sticky top-16 z-40'}>
+        <div className={store.isCanvasFullscreen ? 'w-full h-full' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}>
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
-            <TabsList className="bg-transparent h-12 p-0 gap-1 w-full justify-start overflow-x-auto custom-scrollbar flex-nowrap shrink-0">
+            {!store.isCanvasFullscreen && (
+              <TabsList className="bg-transparent h-12 p-0 gap-1 w-full justify-start overflow-x-auto custom-scrollbar flex-nowrap shrink-0">
               <TabsTrigger
                 value="config"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
@@ -1022,6 +1025,7 @@ export default function Home() {
                 </TabsTrigger>
               )}
             </TabsList>
+            )}
 
             {/* ── Config Tab Content ─────────────────────────────────── */}
             <TabsContent value="config" className="mt-0">
@@ -1266,7 +1270,7 @@ export default function Home() {
 
             {/* ── Floorplan Tab Content ───────────────────────────────── */}
             <TabsContent value="floorplan" className="mt-0">
-              <div className="max-w-7xl mx-auto py-6">
+              <div className={store.isCanvasFullscreen ? 'w-full h-full' : 'max-w-7xl mx-auto py-6'}>
                 <FloorplanView onSave={handleSave} isSaving={saving} />
               </div>
             </TabsContent>
@@ -1314,17 +1318,19 @@ export default function Home() {
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────── */}
-      <footer className="mt-auto bg-white border-t border-stone-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-400">
-            <p>Low-Voltage Estimator &copy; {new Date().getFullYear()} &mdash; Plataforma de Cotización de Sistemas de Bajo Voltaje</p>
-            <p className="flex items-center gap-1">
-              <Zap className="w-3 h-3 text-emerald-500" />
-              Cálculo paramétrico asistido
-            </p>
+      {!store.isCanvasFullscreen && (
+        <footer className="mt-auto bg-white border-t border-stone-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-400">
+              <p>Low-Voltage Estimator &copy; {new Date().getFullYear()} &mdash; Plataforma de Cotización de Sistemas de Bajo Voltaje</p>
+              <p className="flex items-center gap-1">
+                <Zap className="w-3 h-3 text-emerald-500" />
+                Cálculo paramétrico asistido
+              </p>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

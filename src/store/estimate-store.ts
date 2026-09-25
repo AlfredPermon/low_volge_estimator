@@ -298,10 +298,12 @@ interface EstimateStore {
    */
   savedResult: CalculationResult | null;
 
-  // Active view
+  // Active view & Canvas Fullscreen
   activeView: "config" | "prices" | "budget" | "floorplan";
+  isCanvasFullscreen: boolean;
 
   // Actions
+  setIsCanvasFullscreen: (isCanvasFullscreen: boolean) => void;
   setEstimateId: (id: string) => void;
   /** Establece el proyecto activo seleccionado en "Presupuestos Recientes" */
   setActiveEstimate: (id: string | null) => void;
@@ -952,7 +954,9 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   savedResult: null,
 
   activeView: "config",
+  isCanvasFullscreen: false,
 
+  setIsCanvasFullscreen: (isCanvasFullscreen) => set({ isCanvasFullscreen }),
   setEstimateId: (id) => set({ estimateId: id }),
   setActiveEstimate: (id) => set({ activeEstimateId: id }),
   setName: (name) => set({ name }),
@@ -1425,6 +1429,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       isDirty: false,
       savedResult: null,
       activeView: "config",
+      isCanvasFullscreen: false,
     });
   },
   updateLineItem: (id, patch) => {
