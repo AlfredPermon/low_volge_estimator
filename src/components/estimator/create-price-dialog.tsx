@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Loader2, CheckCircle2, AlertCircle, RefreshCw, Wand2 } from "lucide-react";
+import { Plus, Loader2, CheckCircle2, AlertCircle, RefreshCw, Wand2, X, Pencil } from "lucide-react";
 
 import {
   Dialog,
@@ -83,6 +83,25 @@ export default function CreatePriceDialog({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [autoSkuEnabled, setAutoSkuEnabled] = useState(true);
+  
+  // Estados para agregar valores personalizados
+  const [customSystems, setCustomSystems] = useState<string[]>([]);
+  const [isAddingSystem, setIsAddingSystem] = useState(false);
+  const [newSystemValue, setNewSystemValue] = useState("");
+  const [isEditingSystem, setIsEditingSystem] = useState(false);
+  const [editSystemValue, setEditSystemValue] = useState("");
+
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryValue, setNewCategoryValue] = useState("");
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
+  const [editCategoryValue, setEditCategoryValue] = useState("");
+
+  const [customDeviceTypes, setCustomDeviceTypes] = useState<string[]>([]);
+  const [isAddingDeviceType, setIsAddingDeviceType] = useState(false);
+  const [newDeviceTypeValue, setNewDeviceTypeValue] = useState("");
+  const [isEditingDeviceType, setIsEditingDeviceType] = useState(false);
+  const [editDeviceTypeValue, setEditDeviceTypeValue] = useState("");
   // Ref para evitar escritura de SKU sugerido si el usuario ya modificó el campo
   const userModifiedSkuRef = useRef(false);
 
@@ -106,11 +125,65 @@ export default function CreatePriceDialog({
     }
   }, [autoSkuEnabled, suggestedSku, form.sku]);
 
+  // Fetch custom fields globally
+  useEffect(() => {
+    if (open) {
+      fetch("/api/custom-fields")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const sys = data.filter((d) => d.type === "system").map((d) => d.value);
+            const cat = data.filter((d) => d.type === "category").map((d) => d.value);
+            const dev = data.filter((d) => d.type === "deviceType").map((d) => d.value);
+            if (sys.length) setCustomSystems((prev) => Array.from(new Set([...prev, ...sys])));
+            if (cat.length) setCustomCategories((prev) => Array.from(new Set([...prev, ...cat])));
+            if (dev.length) setCustomDeviceTypes((prev) => Array.from(new Set([...prev, ...dev])));
+          }
+        })
+        .catch(console.error);
+    }
+  }, [open]);
+
+  const saveCustomField = async (type: string, value: string) => {
+    try {
+      await fetch("/api/custom-fields", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, value }),
+      });
+    } catch (e) {
+      console.error("Failed to save custom field", e);
+    }
+  };
+
+  const editCustomField = async (type: string, oldValue: string, newValue: string) => {
+    try {
+      await fetch("/api/custom-fields", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, oldValue, newValue }),
+      });
+      // Emitir un evento o simplemente confiar en que el siguiente refresh de Precios lo tomará
+    } catch (e) {
+      console.error("Failed to edit custom field", e);
+    }
+  };
+
   const reset = () => {
     setForm(EMPTY_FORM);
     setErrorMsg(null);
     setAutoSkuEnabled(true);
     userModifiedSkuRef.current = false;
+    
+    setIsAddingSystem(false);
+    setNewSystemValue("");
+    setIsEditingSystem(false);
+    setIsAddingCategory(false);
+    setNewCategoryValue("");
+    setIsEditingCategory(false);
+    setIsAddingDeviceType(false);
+    setNewDeviceTypeValue("");
+    setIsEditingDeviceType(false);
   };
 
   const handleClose = () => {
@@ -307,47 +380,272 @@ export default function CreatePriceDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="new-system" className="text-xs font-medium">
-                Sistema <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={form.system}
-                onValueChange={(v) => setForm((f) => ({ ...f, system: v }))}
-                disabled={submitting}
-              >
-                <SelectTrigger id="new-system" className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SYSTEMS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
+              <div className="flex justify-between items-center">
+                <Label htmlFor="new-system" className="text-xs font-medium">
+                  Sistema <span className="text-red-500">*</span>
+                </Label>
+                {customSystems.includes(form.system) && !isAddingSystem && !isEditingSystem && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditSystemValue(form.system);
+                      setIsEditingSystem(true);
+                    }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <Pencil className="h-3 w-3 mr-1" /> Editar
+                  </button>
+                )}
+              </div>
+              {isEditingSystem ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={editSystemValue}
+                    onChange={(e) => setEditSystemValue(e.target.value)}
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = editSystemValue.trim();
+                      if (val && val !== form.system) {
+                        const oldVal = form.system;
+                        setCustomSystems((prev) => Array.from(new Set([...prev.filter(s => s !== oldVal), val])));
+                        setForm((f) => ({ ...f, system: val }));
+                        editCustomField("system", oldVal, val);
+                      }
+                      setIsEditingSystem(false);
+                    }}
+                    className="h-9 px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Guardar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => setIsEditingSystem(false)}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : isAddingSystem ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={newSystemValue}
+                    onChange={(e) => setNewSystemValue(e.target.value)}
+                    placeholder="Nuevo sistema"
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = newSystemValue.trim();
+                      if (val) {
+                        setCustomSystems((prev) => Array.from(new Set([...prev, val])));
+                        setForm((f) => ({ ...f, system: val }));
+                        saveCustomField("system", val);
+                      } else {
+                        // Si está vacío y form.system también, restaurar a CCTV
+                        if (!form.system) setForm((f) => ({ ...f, system: "CCTV" }));
+                      }
+                      setIsAddingSystem(false);
+                      setNewSystemValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    OK
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      if (!form.system) setForm((f) => ({ ...f, system: "CCTV" }));
+                      setIsAddingSystem(false);
+                      setNewSystemValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.system}
+                  onValueChange={(v) => {
+                    if (v === "custom_add") {
+                      setIsAddingSystem(true);
+                      setForm((f) => ({ ...f, system: "" }));
+                    } else {
+                      setForm((f) => ({ ...f, system: v }));
+                    }
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="new-system" className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set([...SYSTEMS, ...customSystems])).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom_add" className="text-emerald-600 font-medium cursor-pointer mt-1 border-t rounded-none">
+                      <div className="flex items-center">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar nuevo...
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="new-category" className="text-xs font-medium">
-                Categoría <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
-                disabled={submitting}
-              >
-                <SelectTrigger id="new-category" className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
+              <div className="flex justify-between items-center">
+                <Label htmlFor="new-category" className="text-xs font-medium">
+                  Categoría <span className="text-red-500">*</span>
+                </Label>
+                {customCategories.includes(form.category) && !isAddingCategory && !isEditingCategory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditCategoryValue(form.category);
+                      setIsEditingCategory(true);
+                    }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <Pencil className="h-3 w-3 mr-1" /> Editar
+                  </button>
+                )}
+              </div>
+              {isEditingCategory ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={editCategoryValue}
+                    onChange={(e) => setEditCategoryValue(e.target.value)}
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = editCategoryValue.trim();
+                      if (val && val !== form.category) {
+                        const oldVal = form.category;
+                        setCustomCategories((prev) => Array.from(new Set([...prev.filter(c => c !== oldVal), val])));
+                        setForm((f) => ({ ...f, category: val }));
+                        editCustomField("category", oldVal, val);
+                      }
+                      setIsEditingCategory(false);
+                    }}
+                    className="h-9 px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Guardar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => setIsEditingCategory(false)}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : isAddingCategory ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={newCategoryValue}
+                    onChange={(e) => setNewCategoryValue(e.target.value)}
+                    placeholder="Nueva categoría"
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = newCategoryValue.trim();
+                      if (val) {
+                        setCustomCategories((prev) => Array.from(new Set([...prev, val])));
+                        setForm((f) => ({ ...f, category: val }));
+                        saveCustomField("category", val);
+                      } else {
+                        if (!form.category) setForm((f) => ({ ...f, category: "Equipo" }));
+                      }
+                      setIsAddingCategory(false);
+                      setNewCategoryValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    OK
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      if (!form.category) setForm((f) => ({ ...f, category: "Equipo" }));
+                      setIsAddingCategory(false);
+                      setNewCategoryValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => {
+                    if (v === "custom_add") {
+                      setIsAddingCategory(true);
+                      setForm((f) => ({ ...f, category: "" }));
+                    } else {
+                      setForm((f) => ({ ...f, category: v }));
+                    }
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="new-category" className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set([...CATEGORIES, ...customCategories])).map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom_add" className="text-emerald-600 font-medium cursor-pointer mt-1 border-t rounded-none">
+                      <div className="flex items-center">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar nueva...
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -401,26 +699,143 @@ export default function CreatePriceDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="new-deviceType" className="text-xs font-medium">
-                Tipo de dispositivo <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={form.deviceType || "none"}
-                onValueChange={(v) => setForm((f) => ({ ...f, deviceType: v === "none" ? "" : v }))}
-                disabled={submitting}
-              >
-                <SelectTrigger id="new-deviceType" className="h-9">
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Sin tipo —</SelectItem>
-                  {DEVICE_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {DEVICE_TYPE_LABELS[t]}
+              <div className="flex justify-between items-center">
+                <Label htmlFor="new-deviceType" className="text-xs font-medium">
+                  Tipo de dispositivo <span className="text-red-500">*</span>
+                </Label>
+                {form.deviceType && customDeviceTypes.includes(form.deviceType) && !isAddingDeviceType && !isEditingDeviceType && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditDeviceTypeValue(form.deviceType);
+                      setIsEditingDeviceType(true);
+                    }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <Pencil className="h-3 w-3 mr-1" /> Editar
+                  </button>
+                )}
+              </div>
+              {isEditingDeviceType ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={editDeviceTypeValue}
+                    onChange={(e) => setEditDeviceTypeValue(e.target.value)}
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = editDeviceTypeValue.trim();
+                      if (val && val !== form.deviceType) {
+                        const oldVal = form.deviceType;
+                        setCustomDeviceTypes((prev) => Array.from(new Set([...prev.filter(t => t !== oldVal), val])));
+                        setForm((f) => ({ ...f, deviceType: val }));
+                        editCustomField("deviceType", oldVal, val);
+                      }
+                      setIsEditingDeviceType(false);
+                    }}
+                    className="h-9 px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Guardar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => setIsEditingDeviceType(false)}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : isAddingDeviceType ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={newDeviceTypeValue}
+                    onChange={(e) => setNewDeviceTypeValue(e.target.value)}
+                    placeholder="Nuevo tipo"
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = newDeviceTypeValue.trim();
+                      if (val) {
+                        setCustomDeviceTypes((prev) => Array.from(new Set([...prev, val])));
+                        setForm((f) => ({ ...f, deviceType: val }));
+                        saveCustomField("deviceType", val);
+                      } else {
+                        if (!form.deviceType) setForm((f) => ({ ...f, deviceType: "" }));
+                      }
+                      setIsAddingDeviceType(false);
+                      setNewDeviceTypeValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    OK
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      if (!form.deviceType) setForm((f) => ({ ...f, deviceType: "" }));
+                      setIsAddingDeviceType(false);
+                      setNewDeviceTypeValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.deviceType || "none"}
+                  onValueChange={(v) => {
+                    if (v === "custom_add") {
+                      setIsAddingDeviceType(true);
+                      setForm((f) => ({ ...f, deviceType: "" }));
+                    } else {
+                      setForm((f) => ({ ...f, deviceType: v === "none" ? "" : v }));
+                    }
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="new-deviceType" className="h-9">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sin tipo —</SelectItem>
+                    {DEVICE_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {DEVICE_TYPE_LABELS[t] || t}
+                      </SelectItem>
+                    ))}
+                    {customDeviceTypes.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom_add" className="text-emerald-600 font-medium cursor-pointer mt-1 border-t rounded-none">
+                      <div className="flex items-center">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar nuevo...
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 

@@ -285,3 +285,12 @@ model ProcurementRecord {
 
   @@index([status])
 }
+
+model CustomField {
+  id        String   @id @default(cuid())
+  type      String   // 'system', 'category', 'deviceType'
+  value     String
+  createdAt DateTime @default(now())
+
+  @@unique([type, value])
+}

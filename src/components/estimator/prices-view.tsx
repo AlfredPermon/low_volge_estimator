@@ -175,6 +175,10 @@ export default function PricesView() {
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
 
+  // --- Dynamic Filters state -----------------------------------------------
+  const [dynamicSystems, setDynamicSystems] = useState<string[]>([...SYSTEMS]);
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([...CATEGORIES]);
+
   // --- Data state ----------------------------------------------------------
   const [items, setItems] = useState<PriceItem[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -248,6 +252,25 @@ export default function PricesView() {
         if (cancelled) return;
         setItems(json.data);
         setPagination(json.pagination);
+
+        // F1 - Cargar CustomFields globales
+        try {
+          const customRes = await fetch('/api/custom-fields');
+          if (customRes.ok) {
+            const customData = await customRes.json();
+            const dbSystems = customData.filter((c: any) => c.type === 'system').map((c: any) => c.value);
+            const dbCategories = customData.filter((c: any) => c.type === 'category').map((c: any) => c.value);
+            
+            setDynamicSystems(prev => 
+              Array.from(new Set([...SYSTEMS, ...dbSystems, ...json.data.map((i: PriceItem) => i.system).filter(Boolean)]))
+            );
+            setDynamicCategories(prev => 
+              Array.from(new Set([...CATEGORIES, ...dbCategories, ...json.data.map((i: PriceItem) => i.category).filter(Boolean)]))
+            );
+          }
+        } catch (e) {
+          console.error("Error cargando custom fields", e);
+        }
       } catch (err) {
         if (cancelled) return;
         toast.error('Error al cargar los precios', {
@@ -268,6 +291,25 @@ export default function PricesView() {
   useEffect(() => {
     setSelectedIds([]);
   }, [system, category, search, page]);
+
+  // Acumular dinámicamente sistemas y categorías que vengan en los items
+  // para actualizar los filtros cuando el usuario crea nuevos (o navega).
+  // Nota: Ya se integró esto en el doFetch con los custom fields globales,
+  // pero lo mantenemos por si `items` cambia localmente sin re-fetch.
+  useEffect(() => {
+    if (items.length > 0) {
+      setDynamicSystems((prev) => 
+        Array.from(new Set([...prev, ...items.map(i => i.system).filter(Boolean)]))
+      );
+      setDynamicCategories((prev) => 
+        Array.from(new Set([...prev, ...items.map(i => i.category).filter(Boolean)]))
+      );
+    }
+  }, [items]);
+
+  const handleCustomFieldAdded = () => {
+    refresh(); // Forzar re-fetch de custom fields
+  };
 
   // --- Handlers ------------------------------------------------------------
   const handleSearch = () => {
@@ -845,7 +887,7 @@ export default function PricesView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Todos">Todos los Sistemas</SelectItem>
-                {SYSTEMS.map((s) => (
+                {dynamicSystems.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
                   </SelectItem>
@@ -866,7 +908,7 @@ export default function PricesView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Todos">Todas las Categorías</SelectItem>
-                {CATEGORIES.map((c) => (
+                {dynamicCategories.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
                   </SelectItem>
@@ -1030,7 +1072,7 @@ export default function PricesView() {
                         <TableCell>
                           <Badge
                             variant="secondary"
-                            className={SYSTEM_BADGE_VARIANT[item.system] ?? ''}
+                            className={SYSTEM_BADGE_VARIANT[item.system] ?? 'bg-slate-100 text-slate-800 hover:bg-slate-100'}
                           >
                             {item.system}
                           </Badge>
@@ -1038,7 +1080,7 @@ export default function PricesView() {
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={CATEGORY_BADGE_VARIANT[item.category] ?? ''}
+                            className={CATEGORY_BADGE_VARIANT[item.category] ?? 'bg-stone-50 text-stone-700 hover:bg-stone-50 border border-stone-200'}
                           >
                             {item.category}
                           </Badge>
@@ -1143,7 +1185,10 @@ export default function PricesView() {
       {/* ── Diálogos CRUD (fuera del Card para mejor layering) ──────────── */}
       <CreatePriceDialog
         open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
+        onClose={() => {
+          setCreateDialogOpen(false);
+          refresh(); // Refrescar por si se agregaron custom fields y se canceló
+        }}
         onCreated={handlePriceCreated}
         currency={store.currency}
       />
