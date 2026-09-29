@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Paramétrico SSMA · Módulo Medio Ambiente</title>
+<style>
+:root{
+  --bg:#f4f7f6; --surface:#fff; --line:#e2e9e6; --ink:#17221f; --ink2:#66756f;
+  --brand:#0e7c66; --brand-700:#0a5f4e; --brand-50:#e5f3ef;
+  --amber:#b45309; --amber-50:#fef3c7;
+  --radius:14px; --shadow:0 1px 2px rgba(15,30,25,.05),0 10px 30px rgba(15,30,25,.07);
+}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.45 'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{width:232px;flex-shrink:0;background:#10201c;color:#cfe0da;display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh}
+.logo{font-weight:800;font-size:1.15rem;color:#fff;letter-spacing:.4px;padding:0 10px 20px}
+.logo span{color:#4fd1b5;font-weight:600}
+.nav-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;color:#9db4ac;font-size:.92rem;cursor:pointer;margin-bottom:2px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:var(--brand);color:#fff;font-weight:600}
+.sidebar-foot{margin-top:auto;padding:10px;font-size:.72rem;color:#5f7a72}
+
+/* ── Main ── */
+main{flex:1;padding:26px 34px 120px;max-width:1180px;margin:0 auto;width:100%}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.topbar h1{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--ink2);font-size:.88rem;margin-top:3px}
+.pill{display:inline-block;padding:6px 12px;border-radius:999px;font-size:.78rem;font-weight:600}
+.pill.db{background:var(--brand-50);color:var(--brand-700)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+.card h3{font-size:.98rem;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--ink2);margin:14px 0 6px}
+input[type=text],input[type=date]{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;background:#fbfdfc}
+input:focus{outline:none;border-color:var(--brand)}
+.hint{font-size:.78rem;color:var(--ink2);margin-top:12px}
+.hint b{color:var(--brand-700)}
+
+/* Segmented */
+.seg{display:flex;gap:6px;background:#eef2f1;padding:5px;border-radius:12px;flex-wrap:wrap}
+.seg button{flex:1;border:0;background:transparent;padding:9px 12px;border-radius:9px;font:inherit;font-size:.85rem;cursor:pointer;color:var(--ink2);white-space:nowrap}
+.seg button.on{background:#fff;color:var(--brand-700);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.seg.vert{flex-direction:column}
+.seg.vert button{text-align:left;flex:auto}
+
+/* Regiones */
+.regions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.region{border:1.5px solid var(--line);background:#fbfdfc;border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;font:inherit;transition:.15s}
+.region b{display:block;font-size:.9rem}
+.region small{color:var(--ink2);font-size:.73rem}
+.region.on{border-color:var(--brand);background:var(--brand-50)}
+.region.on b{color:var(--brand-700)}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px}
+.kpis.big{margin:0 0 18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.kpi span{font-size:1.55rem;font-weight:800;display:block;letter-spacing:-.02em}
+.kpi small{color:var(--ink2);font-size:.75rem}
+.kpi.soft{background:var(--brand-50);border-color:#cfe8e1}
+.kpi.soft span{color:var(--brand-700)}
+.kpi.brand{background:var(--brand);border-color:var(--brand)}
+.kpi.brand span{color:#fff}.kpi.brand small{color:#bfe5db}
+
+/* Stepper */
+.stepper{display:flex;gap:8px;list-style:none;margin:22px 0;padding:0}
+.stepper li{flex:1;padding:11px 8px;text-align:center;font-size:.8rem;font-weight:600;color:var(--ink2);background:var(--surface);border:1.5px solid var(--line);border-radius:11px;cursor:pointer;transition:.15s}
+.stepper li.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.stepper li.done{border-color:var(--brand);color:var(--brand-700)}
+.step{display:none}.step.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+.stepnav{display:flex;justify-content:space-between;margin-top:18px}
+
+/* Botones */
+.btn{border:0;border-radius:10px;padding:11px 20px;font:inherit;font-weight:700;cursor:pointer;transition:.15s}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-700)}
+.btn.ghost{background:var(--surface);border:1.5px solid var(--line);color:var(--ink)}
+.btn.ghost:hover{border-color:var(--brand);color:var(--brand-700)}
+
+/* Tabla */
+.table-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+#q{max-width:260px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-size:.85rem;color:var(--ink2)}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);text-align:left;padding:10px 8px;border-bottom:1.5px solid var(--line)}
+td{padding:10px 8px;border-bottom:1px solid #eef2f0;vertical-align:middle}
+tr.item:hover td{background:#f7faf9}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.group td{background:#f2f6f4;font-weight:700;font-size:.8rem;color:var(--brand-700);text-transform:uppercase;letter-spacing:.04em}
+.chip{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.7rem;font-weight:700}
+.qty{width:64px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font:inherit;text-align:right}
+tfoot td{font-weight:800;border-top:2px solid var(--ink);border-bottom:0}
+.flag{color:var(--amber);cursor:help}
+.meses-tag{font-size:.7rem;color:var(--brand-700);background:var(--brand-50);padding:2px 7px;border-radius:999px;margin-left:6px}
+
+/* Resumen */
+.catrow{margin-bottom:14px}
+.catrow .top{display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:5px}
+.bar{height:9px;border-radius:99px;background:#eef2f1;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.chart{display:flex;gap:6px;align-items:flex-end;height:170px;padding-top:10px}
+.bar-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+.bar-col i{width:100%;background:linear-gradient(180deg,#12a184,#0a5f4e);border-radius:6px 6px 2px 2px;min-height:3px}
+.bar-col small{font-size:.64rem;color:var(--ink2)}
+.res-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+.res-total{display:flex;justify-content:space-between;padding-top:14px;font-size:1.15rem;font-weight:800}
+.notas{background:var(--amber-50);border-radius:10px;padding:12px 14px;font-size:.8rem;color:var(--amber);margin-top:14px}
+
+/* Barra inferior */
+.bottombar{position:fixed;left:232px;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-top:1.5px solid var(--line);padding:12px 34px;display:flex;align-items:center;gap:22px;z-index:50}
+.bottombar small{color:var(--ink2);font-size:.72rem;display:block}
+.bottombar b{font-size:1.2rem;color:var(--brand-700)}
+.bb-meta{flex:1;font-size:.78rem;color:var(--ink2)}
+
+@media(max-width:920px){
+  .sidebar{display:none}.bottombar{left:0}
+  .grid2{grid-template-columns:1fr}
+  main{padding:18px 16px 130px}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo">◍ SSMA<span>·Studio</span></div>
+  <div class="nav-item active">🌿 Medio Ambiente</div>
+  <div class="nav-item">🦺 Seguridad</div>
+  <div class="nav-item">🏥 Salud</div>
+  <div class="nav-item">📊 Reportes</div>
+  <div class="nav-item">🗄️ Base "Precios"</div>
+  <div class="sidebar-foot">Paramétricos 2015–2016 · v1.0</div>
+</aside>
+
+<main>
+  <header class="topbar">
+    <div>
+      <h1>Módulo Medio Ambiente · Presupuesto Paramétrico</h1>
+      <p class="sub">Estimación automática con costos unitarios de la base de datos <b>"Precios"</b></p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="pill db">● BD Precios: conectada</span>
+    </div>
+  </header>
+
+  <ol class="stepper" id="stepper">
+    <li class="on" onclick="go(1)">1 · Proyecto y Región</li>
+    <li onclick="go(2)">2 · Etapa y Fechas</li>
+    <li onclick="go(3)">3 · Partidas</li>
+    <li onclick="go(4)">4 · Resumen</li>
+  </ol>
+
+  <!-- PASO 1 -->
+  <section class="step on" id="step-1">
+    <div class="grid2">
+      <div class="card">
+        <h3>Datos generales del proyecto</h3>
+        <label>Nombre del proyecto</label>
+        <input type="text" id="projName" value="Planta Industrial — Fase 2"/>
+        <label>Tipo de proyecto</label>
+        <div class="seg" id="segTipo">
+          <button data-v="Remodelación">Remodelación</button>
+          <button data-v="Ampliación">Ampliación</button>
+          <button data-v="Construcción" class="on">Construcción</button>
+        </div>
+        <p class="hint">El tipo de obra filtra el catálogo de partidas aplicables.</p>
+      </div>
+      <div class="card">
+        <h3>Costos unitarios por región</h3>
+        <div class="regions" id="regions"></div>
+        <p class="hint">Los precios unitarios se obtienen en tiempo real de la BD <b>"Precios"</b> según la región seleccionada.</p>
+      </div>
+    </div>
+    <div class="stepnav"><span></span><button class="btn primary" onclick="go(2)">Continuar →</button></div>
+  </section>
+
+  <!-- PASO 2 -->
+  <section class="step" id="step-2">
+    <div class="grid2">
+      <div class="card">
+        <h3>Etapa de ejecución del proyecto</h3>
+        <div class="seg vert" id="segEtapa">
+          <button data-v="Pre-construcción">📐 Pre-construcción</button>
+          <button data-v="Construcción" class="on">🏗️ Construcción</button>
+          <button data-v="Concluido/Cierre">✅ Concluido / Cierre</button>
+        </div>
+        <p class="hint">Cada partida del catálogo está asociada a una o más etapas (columnas de la matriz paramétrica).</p>
+      </div>
+      <div class="card">
+        <h3>Calendario del proyecto</h3>
+        <label>Fecha de inicio</label>
+        <input type="date" id="dStart" value="2025-03-01"/>
+        <label>Fecha final del proyecto</label>
+        <input type="date" id="dEnd" value="2025-12-31"/>
+        <div class="kpis">
+          <div class="kpi"><span id="kDur">—</span><small>meses de obra</small></div>
+          <div class="kpi soft"><span id="kDurRH">—</span><small>meses de RRHH <br>(duración + 2)</small></div>
+        </div>
+        <p class="hint">Regla paramétrica: el <b>recurso humano</b> se presupuesta por la <b>duración del proyecto + 2 meses</b> (movilización y desmovilización).</p>
+      </div>
+    </div>
+    <div class="stepnav"><button class="btn ghost" onclick="go(1)">← Atrás</button><button class="btn primary" onclick="go(3)">Continuar →</button></div>
+  </section>
+
+  <!-- PASO 3 -->
+  <section class="step" id="step-3">
+    <div class="card">
+      <div class="table-head">
+        <div>
+          <h3>Catálogo de partidas paramétricas</h3>
+          <p class="hint" id="filterInfo" style="margin-top:2px"></p>
+        </div>
+        <input type="text" id="q" placeholder="🔍 Buscar artículo…" oninput="state.q=this.value;renderTabla()"/>
+      </div>
+      <div class="toolbar">
+        <label style="margin:0;display:flex;gap:8px;align-items:center;cursor:pointer">
+          <input type="checkbox" id="selAll" checked onchange="toggleAll(this.checked)"> Seleccionar todas las aplicables
+        </label>
+        <span id="countSel"></span>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:34px"></th><th>Artículo</th><th>Categoría</th><th>Unidad</th>
+          <th style="width:70px">Cant.</th><th class="num">PU región</th><th class="num">Importe</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+        <tfoot><tr><td colspan="6">Subtotal partidas seleccionadas</td><td class="num" id="subTotal"></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="stepnav"><button class="btn ghost" onclick="go(2)">← Atrás</button><button class="btn primary" onclick="go(4)">Ver resumen →</button></div>
+  </section>
+
+  <!-- PASO 4 -->
+  <section class="step" id="step-4">
+    <div class="kpis big">
+      <div class="kpi brand"><span id="rTotal">—</span><small>Presupuesto Paramétrico SSMA</small></div>
+      <div class="kpi"><span id="rPartidas">—</span><small>Partidas incluidas</small></div>
+      <div class="kpi"><span id="rDur">—</span><small>Meses de duración</small></div>
+      <div class="kpi"><span id="rRegion">—</span><small>Región</small></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Distribución por categoría</h3><div id="cats"></div></div>
+      <div class="card"><h3>Flujo mensual estimado</h3><div class="chart" id="chart"></div>
+        <p class="hint">Distribución lineal del presupuesto entre los meses de obra (criterio paramétrico).</p></div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h3>Resumen ejecutivo</h3>
+      <div id="resumen"></div>
+      <div id="notas"></div>
+      <div class="stepnav">
+        <button class="btn ghost" onclick="go(3)">← Editar partidas</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn ghost" onclick="window.print()">🖨 Exportar PDF</button>
+          <button class="btn primary" onclick="alert('Mockup: integración con ERP / módulo de presupuestos')">Enviar a presupuesto →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="bottombar">
+  <div><small>ESTIMADO EN VIVO</small><b id="bbTotal">$0</b></div>
+  <div class="bb-meta" id="bbMeta"></div>
+  <button class="btn primary" onclick="go(4)">Calcular paramétrico</button>
+</div>
+
+<script>
+/* ══════════ DATOS (réplica de "Tabla parametrico SSMA.xlsx" — en producción: fetch a BD "Precios") ══════════ */
+const REGIONES=[
+  {n:'Noroeste', d:'Solo aplica CM Cabos'},
+  {n:'Noreste',  d:'NL · Coahuila · Chihuahua · Tamaulipas'},
+  {n:'Centro',   d:'León, Gto · Puebla'},
+  {n:'Sur',      d:'Mérida'}
+];
+const C=[
+// ── RECURSO HUMANO (regla r:'+2' = duración del proyecto + 2 meses) ──
+{c:'Recurso humano',t:2015,a:'Coordinador de Seguridad, Salud y Medio Ambiente (SSMA)',tp:['Construcción'],e:['Construcción'],r:'+2',p:[100000,90000,90000,90000],u:'Persona'},
+{c:'Recurso humano',t:2015,a:'Supervisor de SSMA',tp:['Remodelación','Ampliación','Construcción'],e:['Construcción'],r:'+2',p:[71750,66000,66000,66000],u:'Persona'},
+{c:'Recurso humano',t:2015,a:'Médico Industrial',tp:['Construcción'],e:['Construcción'],r:'+2',p:[71750,90000,90000,90000],u:'Persona'},
+{c:'Recurso humano',t:2015,a:'Enfermero Industrial',tp:['Construcción'],e:['Construcción'],r:'+2',p:[68500,50000,50000,50000],u:'Persona'},
+// ── EQUIPAMENTO ──
+{c:'Equipamento',t:2015,a:'Sonómetro',tp:['Ampliación','Construcción'],e:['Construcción'],p:[5000,2000,2000,2000],u:'pza'},
+{c:'Equipamento',t:2015,a:'Anemómetro',tp:['Ampliación','Construcción'],e:['Construcción'],p:[5000,2000,2000,2000],u:'pza'},
+{c:'Equipamento',t:2015,a:'Cámara infrarroja',tp:['Ampliación','Construcción'],e:['Construcción'],p:[7000,3500,3500,3500],u:'pza'},
+{c:'Equipamento',t:2015,a:'Alcoholímetros',tp:['Ampliación','Construcción'],e:['Construcción'],p:[30000,25000,25000,25000],u:'pza'},
+{c:'Equipamento',t:2015,a:'Pruebas antidoping',tp:['Ampliación','Construcción'],e:['Construcción'],p:[4000,3000,3000,3000],u:'pza'},
+{c:'Equipamento',t:2015,a:'Botiquín de primeros auxilios',tp:['Construcción'],e:['Construcción'],p:[5000,1500,1500,1500],u:'pza'},
+{c:'Equipamento',t:2015,a:'DEA (Desfibrilador)',tp:['Construcción'],e:['Construcción'],p:[50000,50000,50000,50000],u:'pza'},
+{c:'Equipamento',t:2015,a:'Megáfono',tp:['Construcción'],e:['Construcción'],p:[2000,1500,1500,1500],u:'pza'},
+{c:'Equipamento',t:2016,a:'Radiotransmisor',tp:['Construcción'],e:['Construcción'],p:[4500,4000,4000,4000],u:'pza'},
+{c:'Equipamento',t:2016,a:'Kits antiderrame',tp:['Construcción'],e:['Construcción'],p:[3500,3000,3000,3000],u:'Kit'},
+{c:'Equipamento',t:2016,a:'Polvo absorbente',tp:['Ampliación','Construcción'],e:['Construcción'],p:[1200,1050,1050,1050],u:'pza'},
+{c:'Equipamento',t:2016,a:'Charola para aceites',tp:['Construcción'],e:['Construcción'],p:[800,800,800,800],u:'pza'},
+{c:'Equipamento',t:2016,a:'Charolas antiderrames',tp:['Construcción'],e:['Construcción'],p:[10500,9000,9000,9000],u:'pza'},
+{c:'Equipamento',t:2016,a:'Kit viborero',tp:['Construcción'],e:['Construcción'],p:[15000,10000,10000,10000],u:'Kit'},
+{c:'Equipamento',t:2016,a:'Linternas',tp:['Construcción'],e:['Construcción'],p:[1200,1000,1000,1000],u:'pza'},
+{c:'Equipamento',t:2015,a:'Baterías recargables',tp:['Ampliación','Construcción'],e:['Construcción'],p:[700,500,500,500],u:'pza'},
+{c:'Equipamento',t:2015,a:'Equipo de protección personal',tp:['Ampliación','Construcción'],e:['Construcción'],p:[5000,5000,5000,5000],u:'pza'},
+// ── INMOBILIARIO ──
+{c:'Inmobiliario',t:2015,a:'Renta — Caseta para personal',tp:['Construcción'],e:['Construcción'],p:[20000,10000,10000,10000],u:'Serv'},
+{c:'Inmobiliario',t:2015,a:'Mobiliario de oficina — Escritorio y sillas',tp:['Construcción'],e:['Construcción'],p:[45000,45000,45000,45000],u:'pza'},
+{c:'Inmobiliario',t:2015,a:'Ventiladores',tp:['Construcción'],e:['Construcción'],p:[7000,4500,4500,4500],u:'pza'},
+{c:'Inmobiliario',t:2015,a:'Planta de generación de energía',tp:['Construcción'],e:['Construcción'],p:[25000,15000,15000,15000],u:'pza'},
+{c:'Inmobiliario',t:2015,a:'Cisterna de aguas negras',tp:['Construcción'],e:['Construcción'],p:[8000,5000,5000,5000],u:'pza'},
+// ── ESTUDIOS Y SERVICIOS TÉCNICOS ──
+{c:'Estudios y servicios técnicos',t:2016,a:'Estudios de partículas PM10 y PM2.5',tp:['Ampliación','Construcción'],e:['Construcción'],p:[22000,19500,19500,19500],u:'Serv'},
+{c:'Estudios y servicios técnicos',t:2016,a:'Estudio de ruido',tp:['Ampliación','Construcción'],e:['Construcción'],p:[22000,19500,19500,19500],u:'Serv'},
+{c:'Estudios y servicios técnicos',t:2016,a:'Estudio de descarga de aguas residuales',tp:['Ampliación','Construcción'],e:['Concluido/Cierre'],p:[25000,20000,20000,20000],u:'Serv'},
+{c:'Estudios y servicios técnicos',t:2016,a:'Estudios de grado de riesgo de incendio',tp:['Ampliación','Construcción'],e:['Concluido/Cierre'],p:[60000,40000,40000,40000],u:'Serv'},
+{c:'Estudios y servicios técnicos',t:2015,a:'Servicio de ambulancias',tp:['Construcción'],e:['Construcción'],p:[7000,3000,3000,3000],u:'Serv'},
+// ── GESTORÍA ──
+{c:'Gestoria',t:2016,a:'Manifestación de Impacto Ambiental — Federal (MIA-F)',tp:['Construcción'],e:['Pre-construcción'],p:[230000,70000,70000,70000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Programa de Rescate de Flora y Fauna',tp:['Construcción'],e:['Pre-construcción'],p:[800000,700000,700000,700000],u:'m2',o:'Costo variable: depende de la cantidad de vegetación en el predio'},
+{c:'Gestoria',t:2016,a:'Compensación ambiental — MIA-F',tp:['Construcción'],e:['Construcción'],p:[32714.84,32714.84,32714.84,32714.84],u:'por hectárea',o:'Se determina hasta la entrega del resolutivo. Montos estimados.'},
+{c:'Gestoria',t:2016,a:'Pago de derechos de MIA-F',tp:['Construcción'],e:['Pre-construcción'],p:[50000,50000,50000,50000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Manifestación de Impacto Ambiental — Estatal (MIA-E)',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[230000,70000,50000,50000],u:'Serv',o:'Costo de gestoría muy variado según magnitud del proyecto'},
+{c:'Gestoria',t:2016,a:'Pago de compensación ambiental',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[3500000,3500000,3500000,3500000],u:'Serv',o:'Monto se determina hasta entrega del resolutivo (monto máximo histórico estatal)'},
+{c:'Gestoria',t:2016,a:'Pago de derechos de MIA-F (Ampliación)',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[60000,60000,60000,60000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Licencia ambiental municipal',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[45000,35000,25000,25000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Pago de derecho — Licencia ambiental municipal',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[60000,8000,8000,8000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Permiso de limpieza y desbaste',tp:['Construcción'],e:['Pre-construcción'],p:[50000,10000,10000,10000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Pago de derechos limpieza y desbaste',tp:['Construcción'],e:['Pre-construcción'],p:[5000,5000,5000,5000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Registro como generador de residuos peligrosos',tp:['Remodelación','Ampliación','Construcción'],e:['Construcción'],p:[20000,13500,13500,13500],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Registro como generador de residuos de manejo especial',tp:['Remodelación','Ampliación','Construcción'],e:['Construcción'],p:[20000,13500,13500,13500],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Pago de derecho — Registro de residuos de manejo especial',tp:['Remodelación','Ampliación','Construcción'],e:['Construcción'],p:[6500,11000,11000,11000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Registro de Plan de manejo de residuos de manejo especial',tp:['Remodelación','Ampliación','Construcción'],e:['Construcción'],p:[25000,19500,19500,19500],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Pago de derecho de Plan de manejo de residuos',tp:['Remodelación','Ampliación','Construcción'],e:['Construcción'],p:[6500,11000,11000,11000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Registro de descargas de aguas residuales',tp:['Remodelación','Ampliación','Construcción'],e:['Concluido/Cierre'],p:[25000,13500,13500,13500],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Pago de derecho de registro de descargas de aguas residuales',tp:['Remodelación','Ampliación','Construcción'],e:['Concluido/Cierre'],p:[6500,11000,11000,11000],u:'Serv'},
+{c:'Gestoria',t:2015,a:'Factibilidad de protección civil',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[25000,35000,35000,35000],u:'Serv'},
+{c:'Gestoria',t:2015,a:'Análisis de riesgo protección civil',tp:['Ampliación','Construcción'],e:['Construcción'],p:[25000,30000,30000,30000],u:'Serv'},
+{c:'Gestoria',t:2015,a:'Programa interno de protección civil',tp:['Ampliación','Construcción'],e:['Concluido/Cierre'],p:[70000,50000,50000,50000],u:'Serv'},
+{c:'Gestoria',t:2016,a:'Gestorías SSMA',tp:['Ampliación','Construcción'],e:['Pre-construcción'],p:[34000,34000,34000,34000],u:'Serv'},
+// ── SERVICIOS ADICIONALES ──
+{c:'Servicios adicionales',t:2016,a:'Retiro de residuos — Imprevisto',tp:['Remodelación','Ampliación','Construcción'],e:['Concluido/Cierre'],p:[45000,30000,30000,30000],u:'Serv'},
+{c:'Servicios adicionales',t:2016,a:'Señalizaciones de residuos',tp:['Remodelación','Ampliación','Construcción'],e:['Concluido/Cierre'],p:[450,300,300,300],u:'pza'},
+{c:'Servicios adicionales',t:2016,a:'Contenedores especiales para fauna silvestre',tp:['Construcción'],e:['Concluido/Cierre'],p:[65000,40000,40000,40000],u:'pza'}
+];
+const CATS=['Recurso humano','Equipamento','Inmobiliario','Estudios y servicios técnicos','Gestoria','Servicios adicionales'];
+const CATCOLOR={'Recurso humano':'#0e7c66','Equipamento':'#2563eb','Inmobiliario':'#7c3aed','Estudios y servicios técnicos':'#0891b2','Gestoria':'#d97706','Servicios adicionales':'#e11d48'};
+const MXN=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+
+/* ══════════ ESTADO ══════════ */
+const state={tipo:'Construcción',region:1,etapa:'Construcción',start:'2025-03-01',end:'2025-12-31',sel:new Set(),qty:{},q:''};
+
+/* ══════════ LÓGICA DE CÁLCULO (reglas de negocio del Excel) ══════════ */
+const meses=()=>{const a=new Date(state.start+'T00:00'),b=new Date(state.end+'T00:00');
+  return Math.max(1,(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())+1);};
+const aplica=it=>it.tp.includes(state.tipo)&&it.e.includes(state.etapa);
+const importe=it=>{const i=C.indexOf(it),pu=it.p[state.region],q=state.qty[i]||1;
+  return pu*(it.r==='+2'?meses()+2:1)*q;};                       // R2: RRHH = PU × (duración + 2)
+const total=()=>C.filter(aplica).filter(it=>state.sel.has(C.indexOf(it))).reduce((s,it)=>s+importe(it),0);
+
+/* ══════════ RENDER ══════════ */
+function renderRegiones(){
+  document.getElementById('regions').innerHTML=REGIONES.map((r,i)=>
+    `<button class="region ${i===state.region?'on':''}" onclick="state.region=${i};refreshAll()">
+      <b>${r.n}</b><small>${r.d}</small></button>`).join('');
+}
+function renderKPIs(){document.getElementById('kDur').textContent=meses();
+  document.getElementById('kDurRH').textContent=meses()+2;}
+function renderTabla(){
+  const list=C.map((it,i)=>({it,i})).filter(x=>aplica(x.it))
+    .filter(x=>x.it.a.toLowerCase().includes(state.q.toLowerCase()));
+  document.getElementById('filterInfo').innerHTML=
+    `${list.length} partidas aplicables · <b>${state.etapa}</b> · ${state.tipo} · Región <b>${REGIONES[state.region].n}</b>`;
+  let html='',lastCat='';
+  list.forEach(({it,i})=>{
+    if(it.c!==lastCat){lastCat=it.c;
+      html+=`<tr class="group"><td colspan="7">▸ ${it.c}</td></tr>`;}
+    const pu=it.p[state.region],imp=importe(it),m=meses();
+    html+=`<tr class="item">
+      <td><input type="checkbox" ${state.sel.has(i)?'checked':''} onchange="setSel(${i},this.checked)"></td>
+      <td>${it.a}${it.o?` <span class="flag" title="${it.o}">⚠</span>`:''}
+          ${it.r==='+2'?`<span class="meses-tag">${m+2} meses</span>`:''}</td>
+      <td><span class="chip" style="background:${CATCOLOR[it.c]}18;color:${CATCOLOR[it.c]}">${it.t}</span></td>
+      <td>${it.u}</td>
+      <td><input class="qty" type="number" min="1" value="${state.qty[i]||1}" onchange="setQty(${i},this.value)"></td>
+      <td class="num">${MXN.format(pu)}</td>
+      <td class="num"><b>${MXN.format(imp)}</b></td></tr>`;
+  });
+  if(!list.length)html='<tr><td colspan="7" style="text-align:center;color:var(--ink2);padding:30px">Sin partidas para esta combinación de etapa / tipo de proyecto.</td></tr>';
+  document.getElementById('tbody').innerHTML=html;
+  document.getElementById('subTotal').textContent=MXN.format(total());
+  const selCount=[...state.sel].filter(i=>aplica(C[i])).length;
+  document.getElementById('countSel').textContent=`${selCount} seleccionadas`;
+  updateBottomBar();
+}
+function renderResumen(){
+  const t=total(),d=meses();
+  document.getElementById('rTotal').textContent=MXN.format(t);
+  document.getElementById('rPartidas').textContent=[...state.sel].filter(i=>aplica(C[i])).length;
+  document.getElementById('rDur').textContent=d;
+  document.getElementById('rRegion').textContent=REGIONES[state.region].n;
+  // Distribución por categoría
+  const sums=CATS.map(cat=>({cat,v:C.filter(aplica).filter(it=>it.c===cat&&state.sel.has(C.indexOf(it))).reduce((s,it)=>s+importe(it),0)}));
+  const max=Math.max(...sums.map(s=>s.v),1);
+  document.getElementById('cats').innerHTML=sums.filter(s=>s.v>0).map(s=>
+    `<div class="catrow"><div class="top"><span>${s.cat}</span><b>${MXN.format(s.v)}</b></div>
+     <div class="bar"><i style="width:${s.v/max*100}%;background:${CATCOLOR[s.cat]}"></i></div></div>`).join('')
+     ||'<p class="hint">Selecciona partidas para ver la distribución.</p>';
+  // Flujo mensual (distribución lineal; si >12 meses agrupa excedente en M12+)
+  const n=Math.min(12,d),per=t/d;let bars='';
+  for(let i=1;i<=n;i++){const v=(i===n&&d>12)?per*(d-11):per;
+    bars+=`<div class="bar-col" title="${MXN.format(v)}"><i style="height:${v/per*88}%"></i><small>${i===n&&d>12?'M12+':'M'+i}</small></div>`;}
+  document.getElementById('chart').innerHTML=bars;
+  // Resumen ejecutivo
+  document.getElementById('resumen').innerHTML=sums.filter(s=>s.v>0)
+    .map(s=>`<div class="res-row"><span>${s.cat}</span><b>${MXN.format(s.v)}</b></div>`).join('')
+    +`<div class="res-total"><span>TOTAL PARAMÉTRICO SSMA</span><span>${MXN.format(t)}</span></div>`;
+  const vars=C.filter(aplica).filter(it=>it.o&&state.sel.has(C.indexOf(it)));
+  document.getElementById('notas').innerHTML=vars.length?
+    `<div class="notas">⚠ <b>Partidas con costo variable</b> (ajustar al anteproyecto): ${vars.map(v=>v.a).join(' · ')}</div>`:'';
+}
+function updateBottomBar(){
+  document.getElementById('bbTotal').textContent=MXN.format(total());
+  document.getElementById('bbMeta').textContent=
+    `${state.etapa} · ${state.tipo} · Región ${REGIONES[state.region].n} · ${meses()} meses`;
+}
+function refreshAll(){renderRegiones();renderKPIs();renderTabla();}
+
+/* ══════════ INTERACCIONES ══════════ */
+function setSel(i,on){on?state.sel.add(i):state.sel.delete(i);renderTabla();}
+function setQty(i,v){state.qty[i]=Math.max(1,+v||1);renderTabla();}
+function toggleAll(on){C.forEach((it,i)=>{if(aplica(it)){on?state.sel.add(i):state.sel.delete(i);}});renderTabla();}
+function go(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
+  document.getElementById('step-'+n).classList.add('on');
+  document.querySelectorAll('#stepper li').forEach((li,i)=>{
+    li.classList.toggle('on',i===n-1);li.classList.toggle('done',i<n-1);});
+  if(n>=3)renderTabla(); if(n===4)renderResumen();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('segTipo').onclick=e=>{if(e.target.dataset.v){state.tipo=e.target.dataset.v;
+  [...e.target.parentNode.children].forEach(b=>b.classList.toggle('on',b===e.target));refreshAll();}};
+document.getElementById('segEtapa').onclick=e=>{if(e.target.dataset.v){state.etapa=e.target.dataset.v;
+  [...e.target.parentNode.children].forEach(b=>b.classList.toggle('on',b===e.target));refreshAll();}};
+document.getElementById('dStart').onchange=e=>{state.start=e.target.value;refreshAll();};
+document.getElementById('dEnd').onchange=e=>{state.end=e.target.value;refreshAll();};
+
+/* Init: preselecciona todas las partidas aplicables */
+C.forEach((it,i)=>{if(aplica(it))state.sel.add(i);});
+refreshAll();
+</script>
+</body>
+</html>

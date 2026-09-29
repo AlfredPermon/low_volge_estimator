@@ -14,6 +14,7 @@ import ReportsView from '@/components/estimator/reports-view';
 import AnalyticsView from '@/components/estimator/analytics-view';
 import ValidationPanel from '@/components/estimator/validation-panel';
 import FloorplanView from '@/components/estimator/floorplan-view';
+import EnvironmentView from '@/components/estimator/environment-view';
 import ScheduleView from '@/components/schedule/ScheduleView';
 import VivotekForm from '@/components/estimator/vivotek-form';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import {
   PieChart,
   Trash2,
   MapPin,
+  Leaf,
   LogOut,
   ShieldCheck,
   Users,
@@ -988,6 +990,13 @@ export default function Home() {
                 Plano Espacial
               </TabsTrigger>
               <TabsTrigger
+                value="environment"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+              >
+                <Leaf className="w-4 h-4 text-emerald-600" />
+                Medio Ambiente
+              </TabsTrigger>
+              <TabsTrigger
                 value="schedule"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
               >
@@ -1272,6 +1281,13 @@ export default function Home() {
             <TabsContent value="floorplan" className="mt-0">
               <div className={store.isCanvasFullscreen ? 'w-full h-full' : 'max-w-7xl mx-auto py-6'}>
                 <FloorplanView onSave={handleSave} isSaving={saving} />
+              </div>
+            </TabsContent>
+
+            {/* ── Environment Tab Content ─────────────────────────────── */}
+            <TabsContent value="environment" className="mt-0 h-full">
+              <div className={store.isCanvasFullscreen ? 'w-full h-full' : 'w-full h-full'}>
+                <EnvironmentView />
               </div>
             </TabsContent>
 

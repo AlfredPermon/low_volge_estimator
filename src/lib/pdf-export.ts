@@ -938,3 +938,259 @@ export function exportEmergencySignageReportToPDF(
   return filename;
 }
 
+export interface EnvironmentPdfItem {
+  id: string;
+  description: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  totalAmount: number;
+  isHumanRes: boolean;
+  months: number;
+}
+
+export interface EnvironmentPdfMetadata {
+  projectName?: string;
+  clientName?: string;
+  responsible?: string;
+  revision?: string;
+  currency?: "MXN" | "USD";
+  regionName: string;
+  stageName: string;
+  projectType: string;
+  durationMonths: number;
+  totalAmount: number;
+  summaryByCategory: { cat: string; v: number }[];
+}
+
+/**
+ * Genera el reporte PDF paramétrico oficial de Medio Ambiente y Gestoría.
+ */
+export function exportEnvironmentReportToPDF(
+  items: EnvironmentPdfItem[],
+  meta: EnvironmentPdfMetadata
+): string {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const rightX = pageW - margin;
+  const currency = meta.currency || "MXN";
+  let y = margin;
+
+  // ─── Header Principal
+  doc.setFillColor(5, 150, 105); // Verde Emerald-600 (#059669)
+  doc.rect(0, 0, pageW, 22, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("GESTION AMBIENTAL Y SSMA", margin, 11);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Presupuesto Paramétrico Medio Ambiente", margin, 17);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(meta.revision || "Rev. 1", rightX, 11, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Dictamen Paramétrico", rightX, 17, { align: "right" });
+
+  y = 30;
+
+  // ─── Bloque de Información del Proyecto
+  doc.setTextColor(40, 40, 40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(meta.projectName || "Estimación Paramétrica de Medio Ambiente", margin, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Cliente: ${meta.clientName || "Cliente General"}`, margin, y);
+  y += 4;
+  doc.text(`Proyecto: ${meta.projectName || "Estimación General"}`, margin, y);
+  y += 4;
+  doc.text(`Responsable (Medio Ambiente): ${meta.responsible || "Ing. Responsable Ambiental"}`, margin, y);
+  y += 4;
+  doc.text(`Moneda: ${currency} · Región: ${meta.regionName}`, margin, y);
+  y += 4;
+  doc.text(`Etapa: ${meta.stageName} · Tipo: ${meta.projectType} · Duración: ${meta.durationMonths} meses`, margin, y);
+  y += 7;
+
+  // ─── Posicionamiento de Columnas
+  const COL_PARTIDA  = margin + 1;      // x=15
+  const COL_DESC     = margin + 16;     // x=30
+  const COL_CAT      = margin + 86;     // x=100
+  const COL_UN       = margin + 124;    // x=138
+  const COL_CANT     = margin + 138;    // x=152
+  const COL_PU       = margin + 156;    // x=170
+  const COL_IMPORTE  = rightX;          // right edge
+
+  const drawTableHeader = (yPos: number): number => {
+    doc.setFillColor(209, 250, 229); // Verde muy tenue (Emerald 100)
+    doc.rect(margin, yPos - 4, pageW - margin * 2, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(40, 40, 40);
+    doc.text("No.",           COL_PARTIDA, yPos);
+    doc.text("Artículo",      COL_DESC,    yPos);
+    doc.text("Categoría",     COL_CAT,     yPos);
+    doc.text("Un",            COL_UN,      yPos);
+    doc.text("Cant",          COL_CANT,    yPos, { align: "right" });
+    doc.text("PU Región",     COL_PU,      yPos, { align: "right" });
+    doc.text("Importe",       COL_IMPORTE, yPos, { align: "right" });
+    return yPos + 4;
+  };
+
+  const ensureSpace = (needed: number): void => {
+    if (y + needed > pageH - 45) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // ─── Franja de Medio Ambiente
+  ensureSpace(20);
+  doc.setFillColor(167, 243, 208); // Emerald 200
+  doc.rect(margin, y - 4, pageW - margin * 2, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(4, 120, 87); // Emerald 700
+  doc.text("Partidas de Medio Ambiente, Gestoría y SSMA", margin + 1, y + 1);
+  doc.text(formatCurrency(meta.totalAmount, currency), rightX, y + 1, { align: "right" });
+  y += 6;
+
+  y = drawTableHeader(y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+
+  const ensureRowSpace = (needed: number): void => {
+    if (y + needed > pageH - 45) {
+      doc.addPage();
+      y = margin;
+      y = drawTableHeader(y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(40, 40, 40);
+    }
+  };
+
+  // ─── Renderizado de Filas
+  items.forEach((item, index) => {
+    doc.setFontSize(7.5);
+
+    const partidaText = `${String(index + 1).padStart(2, "0")}`;
+    const descText = item.description + (item.isHumanRes ? ` [Calculado a ${item.months + 2} meses]` : "");
+    const catText = item.category;
+
+    const widthDesc = COL_CAT - COL_DESC - 1;
+    const widthCat = COL_UN - COL_CAT - 1;
+
+    const descLines = doc.splitTextToSize(descText, widthDesc);
+    const catLines = doc.splitTextToSize(catText, widthCat);
+
+    const maxLines = Math.max(1, descLines.length, catLines.length);
+    const lineHeight = 3.6;
+    const rowGap = 1.0;
+    const rowHeight = maxLines * lineHeight + rowGap;
+
+    ensureRowSpace(rowHeight);
+
+    for (let i = 0; i < maxLines; i++) {
+      const yy = y + i * lineHeight;
+      if (i === 0) doc.text(partidaText, COL_PARTIDA, yy);
+      if (descLines[i]) doc.text(String(descLines[i]), COL_DESC, yy);
+      if (catLines[i]) doc.text(String(catLines[i]), COL_CAT, yy);
+    }
+
+    doc.text(item.unit, COL_UN, y);
+    doc.text(String(item.quantity), COL_CANT, y, { align: "right" });
+    doc.text(formatCurrency(item.unitCost, currency), COL_PU, y, { align: "right" });
+    doc.text(formatCurrency(item.totalAmount, currency), COL_IMPORTE, y, { align: "right" });
+
+    y += rowHeight;
+  });
+
+  y += 4;
+
+  // ─── Resumen por Categoría y Totales Financieros
+  ensureSpace(45);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(4, 120, 87);
+  doc.text("Resumen por Categoría y Totales", margin, y);
+  y += 5;
+
+  doc.setFillColor(248, 250, 252);
+  doc.rect(margin, y - 4, pageW - margin * 2, 8 + (meta.summaryByCategory.length * 5), "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(40, 40, 40);
+
+  meta.summaryByCategory.forEach(cat => {
+    doc.text(`Subtotal ${cat.cat}:`, margin + 3, y);
+    doc.text(formatCurrency(cat.v, currency), rightX - 3, y, { align: "right" });
+    y += 5;
+  });
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin + 3, y - 3, rightX - 3, y - 3);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(4, 120, 87);
+  doc.text("TOTAL PARAMÉTRICO:", margin + 3, y + 1);
+  doc.text(formatCurrency(meta.totalAmount, currency), rightX - 3, y + 1, { align: "right" });
+  y += 10;
+
+  // ─── Cuadro de Firmas
+  ensureSpace(35);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(40, 40, 40);
+  doc.text("Cuadro de Firmas y Validación", pageW / 2, y, { align: "center" });
+  y += 14;
+
+  const colW = (pageW - margin * 2) / 2;
+  const sig1X = margin + colW / 2;
+  const sig2X = margin + colW + colW / 2;
+
+  doc.setDrawColor(80, 80, 80);
+  doc.line(sig1X - 30, y, sig1X + 30, y);
+  doc.line(sig2X - 30, y, sig2X + 30, y);
+  y += 4;
+
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.text(meta.responsible || "Ing. Responsable Ambiental", sig1X, y, { align: "center" });
+  doc.text(meta.clientName || "Aprobación del Cliente", sig2X, y, { align: "center" });
+  y += 3.5;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Elaboró / Especialista Medio Ambiente", sig1X, y, { align: "center" });
+  doc.text("Aprobó / Cliente Representante", sig2X, y, { align: "center" });
+
+  // ─── Footer Paginado
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${p} de ${totalPages} · Generado por Low Voltage Estimator`,
+      pageW / 2,
+      pageH - 6,
+      { align: "center" }
+    );
+  }
+
+  const cleanName = (meta.projectName || "reporte_ambiental").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_");
+  const filename = `${cleanName}_Parametrico_Medio_Ambiente.pdf`;
+  doc.save(filename);
+  return filename;
+}
