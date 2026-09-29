@@ -1338,8 +1338,9 @@ export function calculateCCTV(
     );
   }
 
-  const sums = sumLineItems(items);
-  return { ...sums, lineItems: items };
+  const validItems = items.filter(i => i.quantity > 0 && !(i.category === "Mano de Obra" && i.totalAmount === 0));
+  const sums = sumLineItems(validItems);
+  return { ...sums, lineItems: validItems };
 }
 
 export function calculateAccess(
@@ -1608,8 +1609,9 @@ export function calculateAccess(
     makeLineItem(idx++, "5.7.4", "ACCESO", "ACC-MO-001", laborDesc, "lote", 1, labor.total, "Mano de Obra", !laborMatch, laborMatch?.brand || "", laborMatch?.model || "")
   );
 
-  const sums = sumLineItems(items);
-  return { ...sums, lineItems: items };
+  const validItems = items.filter(i => i.quantity > 0 && !(i.category === "Mano de Obra" && i.totalAmount === 0));
+  const sums = sumLineItems(validItems);
+  return { ...sums, lineItems: validItems };
 }
 
 export function calculatePaging(
@@ -1734,8 +1736,9 @@ export function calculatePaging(
     makeLineItem(idx++, "5.7.5", "VOCEO", "VOC-MO-001", laborDesc, "lote", 1, labor.total, "Mano de Obra", !laborMatch, laborMatch?.brand || "", laborMatch?.model || "")
   );
 
-  const sums = sumLineItems(items);
-  return { ...sums, lineItems: items };
+  const validItems = items.filter(i => i.quantity > 0 && !(i.category === "Mano de Obra" && i.totalAmount === 0));
+  const sums = sumLineItems(validItems);
+  return { ...sums, lineItems: validItems };
 }
 
 export function calculateFire(
@@ -1872,8 +1875,9 @@ export function calculateFire(
     makeLineItem(idx++, "5.7.5", "INCENDIO", "FIR-MO-001", laborDesc, "lote", 1, labor.total, "Mano de Obra", !laborMatch, laborMatch?.brand || "", laborMatch?.model || "")
   );
 
-  const sums = sumLineItems(items);
-  return { ...sums, lineItems: items };
+  const validItems = items.filter(i => i.quantity > 0 && !(i.category === "Mano de Obra" && i.totalAmount === 0));
+  const sums = sumLineItems(validItems);
+  return { ...sums, lineItems: validItems };
 }
 
 // ─── Estimated costs (fallback when no DB match) ────────────────────────────
@@ -1979,22 +1983,26 @@ export function runCalculation(params: {
   const allLineItems: LineItem[] = [];
   const warnings: string[] = [];
 
-  if (cctvConfig && cctvConfig.cameras?.length > 0) {
+  const cctvTotal = (cctvConfig?.cameras?.reduce((s, c) => s + (c.qty || 0), 0) || 0) + (cctvConfig?.nvrs?.qty || 0) + (cctvConfig?.switches?.qty || 0) + (cctvConfig?.monitors?.qty || 0);
+  if (cctvConfig && cctvTotal > 0) {
     systems["CCTV"] = calculateCCTV(cctvConfig, factors, priceItems, floorplanConfig);
     allLineItems.push(...systems["CCTV"].lineItems);
   }
 
-  if (accessConfig && accessConfig.doors > 0) {
+  const accessTotal = (accessConfig?.doors || 0) + (accessConfig?.controllers || 0) + (accessConfig?.turnstiles || 0) + (accessConfig?.magneticLocks || 0);
+  if (accessConfig && accessTotal > 0) {
     systems["ACCESO"] = calculateAccess(accessConfig, factors, priceItems, floorplanConfig);
     allLineItems.push(...systems["ACCESO"].lineItems);
   }
 
-  if (pagingConfig && (pagingConfig.speakers?.length > 0 || pagingConfig.bluetoothSpeakers > 0)) {
+  const pagingTotal = (pagingConfig?.speakers?.reduce((s, sp) => s + (sp.qty || 0), 0) || 0) + (pagingConfig?.bluetoothSpeakers || 0) + (pagingConfig?.amplifiers?.qty || 0) + (pagingConfig?.gateways || 0);
+  if (pagingConfig && pagingTotal > 0) {
     systems["VOCEO"] = calculatePaging(pagingConfig, factors, priceItems, floorplanConfig);
     allLineItems.push(...systems["VOCEO"].lineItems);
   }
 
-  if (fireConfig && (fireConfig.smokeDetectors > 0 || fireConfig.heatDetectors > 0 || fireConfig.manualStations > 0)) {
+  const fireTotal = (fireConfig?.smokeDetectors || 0) + (fireConfig?.heatDetectors || 0) + (fireConfig?.manualStations || 0) + (fireConfig?.strobes || 0) + (fireConfig?.hornStrobes || 0) + (fireConfig?.coDetectors || 0) + (fireConfig?.panels?.qty || 0);
+  if (fireConfig && fireTotal > 0) {
     systems["INCENDIO"] = calculateFire(fireConfig, factors, priceItems, floorplanConfig);
     allLineItems.push(...systems["INCENDIO"].lineItems);
   }
