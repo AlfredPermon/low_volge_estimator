@@ -1983,7 +1983,7 @@ export function runCalculation(params: {
   const allLineItems: LineItem[] = [];
   const warnings: string[] = [];
 
-  const cctvTotal = (cctvConfig?.cameras?.reduce((s, c) => s + (c.qty || 0), 0) || 0) + (cctvConfig?.nvrs?.qty || 0) + (cctvConfig?.switches?.qty || 0) + (cctvConfig?.monitors?.qty || 0);
+  const cctvTotal = (cctvConfig?.cameras?.reduce((s, c) => s + (c.qty || 0), 0) || 0) + (cctvConfig?.nvr?.qty || 0) + (cctvConfig?.switches || 0) + (cctvConfig?.monitors || 0);
   if (cctvConfig && cctvTotal > 0) {
     systems["CCTV"] = calculateCCTV(cctvConfig, factors, priceItems, floorplanConfig);
     allLineItems.push(...systems["CCTV"].lineItems);
