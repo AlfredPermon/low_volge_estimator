@@ -27,3 +27,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+*.zip
+LowVoltageEstimator-v3.0.0-dist.zip
