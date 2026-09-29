@@ -326,11 +326,13 @@ export default function BudgetView() {
     const ordered: { system: string; items: LineItem[]; subtotal: number }[] = [];
     for (const sys of systemOrder) {
       const items = map.get(sys) ?? [];
-      ordered.push({
-        system: sys,
-        items,
-        subtotal: items.reduce((sum, it) => sum + (it.total ?? 0), 0),
-      });
+      if (items.length > 0) {
+        ordered.push({
+          system: sys,
+          items,
+          subtotal: items.reduce((sum, it) => sum + (it.total ?? 0), 0),
+        });
+      }
     }
     // Add any systems not in the predefined order if they contain items
     for (const [sys, items] of map) {
@@ -607,6 +609,16 @@ export default function BudgetView() {
           >
             <Mail className="h-4 w-4 text-amber-600" />
             E-MAIL
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50 bg-teal-50/30"
+            onClick={() => handleOpenAddModal('CCTV')}
+            title="Agregar nueva partida al presupuesto"
+          >
+            <Plus className="h-4 w-4" />
+            Agregar Partida
           </Button>
         </div>
       </div>
@@ -1128,14 +1140,7 @@ function GroupedRows({
         </TableCell>
       </TableRow>
 
-      {/* State for empty items in system */}
-      {group.items.length === 0 && (
-        <TableRow>
-          <TableCell colSpan={9} className="text-center py-3 text-xs text-stone-500 italic bg-stone-50/30">
-            Sin partidas registradas en {getSystemDisplayName(group.system)}. Haz clic en &quot;+ Agregar Fila&quot; para añadir dispositivos.
-          </TableCell>
-        </TableRow>
-      )}
+
 
       {/* Line items for this system */}
       {group.items.map((item) => (
