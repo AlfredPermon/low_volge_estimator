@@ -11,27 +11,8 @@ import {
 } from "@/lib/import-normalizer";
 
 // ─── Zod Schema for Row Validation ───────────────────────────────────────────
+// El esquema se define dinámicamente dentro de POST para incluir custom fields
 
-const priceRowSchema = z.object({
-  SKU: z.string().min(1, "El SKU es obligatorio"),
-  Sistema: z.enum(SYSTEMS as unknown as [string, ...string[]], {
-    message: "Sistema inválido",
-  }),
-  Categoría: z.enum(CATEGORIES as unknown as [string, ...string[]], {
-    message: "Categoría inválida",
-  }),
-  Marca: z.string().default(""),
-  Modelo: z.string().default(""),
-  Descripción: z.string().min(1, "La descripción es obligatoria"),
-  Unidad: z.string().min(1, "La unidad es obligatoria"),
-  Costo: z
-    .number({
-      message: "El costo debe ser un número",
-    })
-    .min(0, "El costo no puede ser negativo"),
-  Rendimiento: z.number().default(0),
-  TipoDispositivo: z.string().default(""),
-});
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +61,33 @@ function looksLikeRefError(value: unknown): boolean {
 export async function POST(request: NextRequest) {
   const start = Date.now();
   try {
+    // ── Cargar CustomFields ──────────────────────────────────────────────────
+    const customFields = await db.customField.findMany();
+    const customSystems = customFields.filter((c: any) => c.type === "system").map((c: any) => c.value);
+    const customCategories = customFields.filter((c: any) => c.type === "category").map((c: any) => c.value);
+    
+    const dynamicSystems = Array.from(new Set([...SYSTEMS, ...customSystems]));
+    const dynamicCategories = Array.from(new Set([...CATEGORIES, ...customCategories]));
+
+    const priceRowSchema = z.object({
+      SKU: z.string().min(1, "El SKU es obligatorio"),
+      Sistema: z.enum(dynamicSystems as unknown as [string, ...string[]], {
+        message: "Sistema inválido",
+      }),
+      Categoría: z.enum(dynamicCategories as unknown as [string, ...string[]], {
+        message: "Categoría inválida",
+      }),
+      Marca: z.string().default(""),
+      Modelo: z.string().default(""),
+      Descripción: z.string().min(1, "La descripción es obligatoria"),
+      Unidad: z.string().min(1, "La unidad es obligatoria"),
+      Costo: z
+        .number({ message: "El costo debe ser un número" })
+        .min(0, "El costo no puede ser negativo"),
+      Rendimiento: z.number().default(0),
+      TipoDispositivo: z.string().default(""),
+    });
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -197,11 +205,10 @@ export async function POST(request: NextRequest) {
         skusSeen.add(sku);
       }
 
-      // F1 - Normalizar Sistema a clave canónica del enum SYSTEMS.
+      // F1 - Normalizar Sistema a clave canónica.
       // Si no se reconoce, se acepta la fila con fallback "GENERAL" + warning
-      // (antes esto abortaba 36 filas de golpe, lo que es excesivo).
       const rawSystem = String(row.Sistema || "").trim();
-      const normalizedSystem = normalizeSystemName(rawSystem, SYSTEMS);
+      const normalizedSystem = normalizeSystemName(rawSystem, dynamicSystems);
       let finalSystem: string;
       if (normalizedSystem) {
         if (normalizedSystem !== rawSystem) normalizedSystems++;
@@ -216,7 +223,7 @@ export async function POST(request: NextRequest) {
 
       // F1 - Normalizar Categoría a clave canónica.
       const rawCategory = String(row.Categoría || "").trim();
-      const normalizedCategory = normalizeCategoryName(rawCategory, CATEGORIES);
+      const normalizedCategory = normalizeCategoryName(rawCategory, dynamicCategories);
       let finalCategory: string;
       if (normalizedCategory) {
         if (normalizedCategory !== rawCategory) normalizedCategories++;

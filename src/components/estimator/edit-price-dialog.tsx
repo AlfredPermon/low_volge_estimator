@@ -97,6 +97,11 @@ export default function EditPriceDialog({
     createdAt: string;
   }>>([]);
 
+  // Estados para custom fields
+  const [customSystems, setCustomSystems] = useState<string[]>([]);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [customDeviceTypes, setCustomDeviceTypes] = useState<string[]>([]);
+
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>("");
 
@@ -151,6 +156,25 @@ export default function EditPriceDialog({
       cancelled = true;
       clearTimeout(timer);
     };
+  }, [priceId]);
+
+  // ─── Fetch Custom Fields ─────────────────────────────────────────────
+  useEffect(() => {
+    if (priceId) {
+      fetch("/api/custom-fields")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const sys = data.filter((d) => d.type === "system").map((d) => d.value);
+            const cat = data.filter((d) => d.type === "category").map((d) => d.value);
+            const dev = data.filter((d) => d.type === "deviceType").map((d) => d.value);
+            if (sys.length) setCustomSystems(sys);
+            if (cat.length) setCustomCategories(cat);
+            if (dev.length) setCustomDeviceTypes(dev);
+          }
+        })
+        .catch(console.error);
+    }
   }, [priceId]);
 
   // ─── Cargar historial cuando se solicite ─────────────────────────────
@@ -366,7 +390,7 @@ export default function EditPriceDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SYSTEMS.map((s) => (
+                    {Array.from(new Set([...SYSTEMS, ...customSystems, draft.system])).filter(Boolean).map((s) => (
                       <SelectItem key={s} value={s}>
                         {s}
                       </SelectItem>
@@ -388,7 +412,7 @@ export default function EditPriceDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
+                    {Array.from(new Set([...CATEGORIES, ...customCategories, draft.category])).filter(Boolean).map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>
@@ -413,9 +437,9 @@ export default function EditPriceDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— Sin tipo —</SelectItem>
-                    {DEVICE_TYPES.map((t) => (
+                    {Array.from(new Set([...DEVICE_TYPES, ...customDeviceTypes, draft.deviceType])).filter(t => t && t !== "none").map((t) => (
                       <SelectItem key={t} value={t}>
-                        {DEVICE_TYPE_LABELS[t]}
+                        {DEVICE_TYPE_LABELS[t] || t}
                       </SelectItem>
                     ))}
                   </SelectContent>
