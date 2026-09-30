@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Leaf, ChevronRight, CheckCircle2, ChevronLeft, Loader2, Printer, ArrowRight, Search } from 'lucide-react';
+import { Leaf, ChevronRight, CheckCircle2, ChevronLeft, Loader2, Printer, ArrowRight, Search, Building2, User } from 'lucide-react';
 import { useEstimateStore } from '@/store/estimate-store';
 import { toast } from 'sonner';
 import { exportEnvironmentReportToPDF, EnvironmentPdfItem, EnvironmentPdfMetadata } from '@/lib/pdf-export';
@@ -99,11 +99,10 @@ export default function EnvironmentView() {
           
           setCatalog(envItems);
           
-          // Seleccionar por defecto
+          // Partidas deseleccionadas por defecto
           const newSel = new Set<string>();
           const newQty: Record<string, number> = {};
           envItems.forEach(i => {
-            newSel.add(i.id);
             newQty[i.id] = 1;
           });
           setSelectedItems(newSel);
@@ -254,7 +253,7 @@ export default function EnvironmentView() {
         </div>
       </div>
 
-      <div className="flex-1 w-full max-w-6xl mx-auto p-8 pb-32">
+      <div className="flex-1 w-full max-w-6xl mx-auto p-8 pb-12">
         {/* Stepper Header */}
         <div className="flex justify-between items-center mb-8 bg-white p-3 rounded-2xl border border-stone-200 shadow-sm">
           {WIZARD_STEPS.map((s, i) => (
@@ -291,7 +290,15 @@ export default function EnvironmentView() {
               </CardHeader>
               <CardContent className="p-6 space-y-5">
                 <div className="space-y-2">
-                  <Label className="text-stone-600">Nombre del proyecto</Label>
+                  <Label className="text-stone-600 flex items-center gap-2">
+                    <User className="w-4 h-4 text-stone-500" /> Cliente
+                  </Label>
+                  <Input readOnly value={store.clientName || "Sin cliente"} className="bg-stone-50" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-stone-600 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-stone-500" /> Nombre del proyecto
+                  </Label>
                   <Input readOnly value={store.projectName || "Sin nombre"} className="bg-stone-50" />
                 </div>
                 <div className="space-y-2">
@@ -423,7 +430,7 @@ export default function EnvironmentView() {
             <div className="p-3 border-b border-stone-100 bg-stone-50 flex items-center justify-between px-6 text-sm text-stone-600">
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
-                  checked={filteredCatalog.length > 0 && selectedItems.size === catalog.length}
+                  checked={filteredCatalog.length > 0 && selectedItems.size === filteredCatalog.length}
                   onCheckedChange={toggleSelectAll}
                 />
                 Seleccionar todas las aplicables
@@ -533,7 +540,11 @@ export default function EnvironmentView() {
               <Card className="border-stone-200 shadow-sm">
                 <CardContent className="p-5">
                   <span className="block text-2xl font-bold text-stone-800">{REGIONES.find(r=>r.id===region)?.n}</span>
-                  <small className="text-stone-500 text-xs font-medium">Región seleccionada</small>
+                  <small className="text-stone-500 text-xs font-medium block">Región seleccionada</small>
+                  <div className="mt-2 pt-2 border-t border-stone-100 flex items-center gap-1.5 text-xs text-stone-600 font-medium">
+                    <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="truncate">{store.projectName || 'Sin proyecto'}</span>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -623,20 +634,7 @@ export default function EnvironmentView() {
           </div>
         )}
       </div>
-
-      {/* Bottom Bar (flotante) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-stone-200 p-4 px-8 flex items-center justify-between z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <div>
-          <small className="text-stone-500 font-semibold text-[10px] uppercase tracking-wider block mb-0.5">ESTIMADO EN VIVO</small>
-          <b className="text-xl text-emerald-700">{formatCurrency(totalAmount)}</b>
-        </div>
-        <div className="flex-1 text-center hidden md:block text-xs text-stone-500 font-medium">
-          {stage} · {projectType} · Región {REGIONES.find(r=>r.id===region)?.n} · {months} meses
-        </div>
-        <Button onClick={() => setWizardStep(3)} className="bg-emerald-600 hover:bg-emerald-700 shadow-md">
-          Calcular paramétrico
-        </Button>
-      </div>
     </div>
   );
 }
+
