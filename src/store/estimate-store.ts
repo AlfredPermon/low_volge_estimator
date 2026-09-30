@@ -263,6 +263,7 @@ interface EstimateStore {
   // Fechas del proyecto
   startDate: string;
   endDate: string;
+  parametricDeliveryDate: string;
   // Responsables por departamento
   techResponsable: string;
   envResponsable: string;
@@ -318,6 +319,7 @@ interface EstimateStore {
   // Fechas y responsables
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
+  setParametricDeliveryDate: (date: string) => void;
   setTechResponsable: (name: string) => void;
   setEnvResponsable: (name: string) => void;
   setRiskResponsable: (name: string) => void;
@@ -931,6 +933,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   factorsNotes: "",
   startDate: "",
   endDate: "",
+  parametricDeliveryDate: "",
   techResponsable: "",
   envResponsable: "",
   riskResponsable: "",
@@ -969,6 +972,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   setFactorsNotes: (factorsNotes) => set({ factorsNotes }),
   setStartDate: (startDate) => set({ startDate }),
   setEndDate: (endDate) => set({ endDate }),
+  setParametricDeliveryDate: (parametricDeliveryDate) => set({ parametricDeliveryDate }),
   setTechResponsable: (techResponsable) => set({ techResponsable }),
   setEnvResponsable: (envResponsable) => set({ envResponsable }),
   setRiskResponsable: (riskResponsable) => set({ riskResponsable }),
@@ -1362,6 +1366,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       factorsNotes: (data.factorsNotes as string) || "",
       startDate: (data.startDate as string) || "",
       endDate: (data.endDate as string) || "",
+      parametricDeliveryDate: (data.parametricDeliveryDate as string) || "",
       techResponsable: (data.techResponsable as string) || "",
       envResponsable: (data.envResponsable as string) || "",
       riskResponsable: (data.riskResponsable as string) || "",
@@ -1411,6 +1416,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       factorsNotes: "",
       startDate: "",
       endDate: "",
+      parametricDeliveryDate: "",
       techResponsable: "",
       envResponsable: "",
       riskResponsable: "",
@@ -1545,6 +1551,7 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
           projectManager: state.projectManager,
           startDate: state.startDate,
           endDate: state.endDate,
+          parametricDeliveryDate: state.parametricDeliveryDate,
           techResponsable: state.techResponsable,
           envResponsable: state.envResponsable,
           riskResponsable: state.riskResponsable,

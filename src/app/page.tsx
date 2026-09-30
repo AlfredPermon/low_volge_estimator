@@ -75,6 +75,7 @@ interface EstimateRecord {
   createdAt: string;
   updatedAt: string;
   grandTotal: number;
+  parametricDeliveryDate?: string;
 }
 
 type EstimateStatusFilter = 'all' | 'borrador' | 'calculado';
@@ -209,6 +210,7 @@ export default function Home() {
       projectManager: store.projectManager,
       startDate: store.startDate,
       endDate: store.endDate,
+      parametricDeliveryDate: store.parametricDeliveryDate,
       techResponsable: store.techResponsable,
       envResponsable: store.envResponsable,
       riskResponsable: store.riskResponsable,
@@ -225,6 +227,7 @@ export default function Home() {
     store.projectManager,
     store.startDate,
     store.endDate,
+    store.parametricDeliveryDate,
     store.techResponsable,
     store.envResponsable,
     store.riskResponsable,
@@ -277,6 +280,7 @@ export default function Home() {
           projectManager: state.projectManager,
           startDate: state.startDate,
           endDate: state.endDate,
+          parametricDeliveryDate: state.parametricDeliveryDate,
           techResponsable: state.techResponsable,
           envResponsable: state.envResponsable,
           riskResponsable: state.riskResponsable,
@@ -347,6 +351,7 @@ export default function Home() {
       store.projectManager !== snap.projectManager ||
       store.startDate !== snap.startDate ||
       store.endDate !== snap.endDate ||
+      store.parametricDeliveryDate !== snap.parametricDeliveryDate ||
       store.techResponsable !== snap.techResponsable ||
       store.envResponsable !== snap.envResponsable ||
       store.riskResponsable !== snap.riskResponsable ||
@@ -366,6 +371,7 @@ export default function Home() {
     store.projectManager,
     store.startDate,
     store.endDate,
+    store.parametricDeliveryDate,
     store.techResponsable,
     store.envResponsable,
     store.riskResponsable,
@@ -395,6 +401,7 @@ export default function Home() {
         projectManager: store.projectManager,
         startDate: store.startDate,
         endDate: store.endDate,
+        parametricDeliveryDate: store.parametricDeliveryDate,
         techResponsable: store.techResponsable,
         envResponsable: store.envResponsable,
         riskResponsable: store.riskResponsable,
@@ -776,59 +783,90 @@ export default function Home() {
       </div>
       
       {/* Fechas del Proyecto */}
-      <div className="space-y-2">
-        <Label htmlFor="startDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
-          <CalendarDays className="w-4 h-4" /> Fecha Inicio
-        </Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal h-10",
-                !store.startDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarDays className="mr-2 h-4 w-4" />
-              {store.startDate ? new Date(store.startDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={store.startDate ? new Date(store.startDate) : undefined}
-              onSelect={(date) => date && store.setStartDate(date.toISOString())}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="endDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
-          <CalendarDays className="w-4 h-4" /> Fecha Final
-        </Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal h-10",
-                !store.endDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarDays className="mr-2 h-4 w-4" />
-              {store.endDate ? new Date(store.endDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={store.endDate ? new Date(store.endDate) : undefined}
-              onSelect={(date) => date && store.setEndDate(date.toISOString())}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+      <div className="space-y-2 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="startDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" /> Fecha Inicio
+          </Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal h-10",
+                  !store.startDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarDays className="mr-2 h-4 w-4" />
+                {store.startDate ? new Date(store.startDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={store.startDate ? new Date(store.startDate) : undefined}
+                onSelect={(date) => date && store.setStartDate(date.toISOString())}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="parametricDeliveryDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" /> Fecha Entrega Paramétricos
+          </Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal h-10 transition-colors hover:border-emerald-500",
+                  !store.parametricDeliveryDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarDays className="mr-2 h-4 w-4" />
+                {store.parametricDeliveryDate ? new Date(store.parametricDeliveryDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={store.parametricDeliveryDate ? new Date(store.parametricDeliveryDate) : undefined}
+                onSelect={(date) => date && store.setParametricDeliveryDate(date.toISOString())}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="endDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" /> Fecha Final
+          </Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal h-10",
+                  !store.endDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarDays className="mr-2 h-4 w-4" />
+                {store.endDate ? new Date(store.endDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={store.endDate ? new Date(store.endDate) : undefined}
+                onSelect={(date) => date && store.setEndDate(date.toISOString())}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       {/* Responsables por Departamento */}
@@ -1190,6 +1228,27 @@ export default function Home() {
                               <div className="max-h-[380px] sm:max-h-[440px] overflow-y-auto pr-1.5 space-y-2 custom-scrollbar border-t border-stone-100/80 pt-2">
                                 {visibleEstimates.map(({ e: est, lastAccessed }) => {
                                   const status = getStatus(est);
+                                  const now = new Date().getTime();
+                                  let semColor = '';
+                                  let semLabel = '';
+                                  if (est.parametricDeliveryDate) {
+                                    const deliveryTime = new Date(est.parametricDeliveryDate).getTime();
+                                    const diffDays = (deliveryTime - now) / (1000 * 3600 * 24);
+                                    if (status === 'calculado') {
+                                      semColor = 'bg-emerald-500';
+                                      semLabel = 'Entregado / Calculado';
+                                    } else if (diffDays < 0) {
+                                      semColor = 'bg-red-500 animate-pulse';
+                                      semLabel = 'Entrega Vencida';
+                                    } else if (diffDays <= 3) {
+                                      semColor = 'bg-amber-500';
+                                      semLabel = 'Próximo a Vencer';
+                                    } else {
+                                      semColor = 'bg-blue-500';
+                                      semLabel = 'En Tiempo';
+                                    }
+                                  }
+
                                   return (
                                     <div
                                       key={est.id}
@@ -1203,6 +1262,9 @@ export default function Home() {
                                       <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                                         <div className="min-w-0">
                                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                                            {semColor && (
+                                              <div className={`w-2.5 h-2.5 rounded-full ${semColor} shrink-0 shadow-sm border border-black/10`} title={semLabel} />
+                                            )}
                                             <p className="text-sm font-semibold text-stone-900 wrap-break-word min-w-0">
                                               {est.name}
                                             </p>

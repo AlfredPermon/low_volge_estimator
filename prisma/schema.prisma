@@ -100,6 +100,7 @@ model Estimate {
   projectManager   String   @default("")
   startDate        String   @default("")
   endDate          String   @default("")
+  parametricDeliveryDate String @default("")
   techResponsable  String   @default("")
   envResponsable   String   @default("")
   riskResponsable  String   @default("")

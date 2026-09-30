@@ -30,6 +30,7 @@ const updateEstimateSchema = z.object({
   projectManager: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  parametricDeliveryDate: z.string().optional(),
   techResponsable: z.string().optional(),
   envResponsable: z.string().optional(),
   riskResponsable: z.string().optional(),
@@ -246,6 +247,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (data.projectManager !== undefined) updateData.projectManager = data.projectManager;
     if (data.startDate !== undefined) updateData.startDate = data.startDate;
     if (data.endDate !== undefined) updateData.endDate = data.endDate;
+    if (data.parametricDeliveryDate !== undefined) updateData.parametricDeliveryDate = data.parametricDeliveryDate;
     if (data.techResponsable !== undefined) updateData.techResponsable = data.techResponsable;
     if (data.envResponsable !== undefined) updateData.envResponsable = data.envResponsable;
     if (data.riskResponsable !== undefined) updateData.riskResponsable = data.riskResponsable;

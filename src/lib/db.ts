@@ -7,8 +7,6 @@ const globalForDb = globalThis as unknown as {
 };
 
 export async function ensureDatabaseSchema() {
-  if (globalForDb.schemaEnsured) return;
-  globalForDb.schemaEnsured = true;
   try {
     const tables = (await db.$queryRawUnsafe("SELECT name FROM sqlite_master WHERE type='table';")) as Array<{ name: string }>;
     const tableNames = new Set(Array.isArray(tables) ? tables.map((t) => t.name) : []);
@@ -68,6 +66,9 @@ export async function ensureDatabaseSchema() {
     }
     if (!estColNames.has('endDate')) {
       await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN endDate TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('parametricDeliveryDate')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN parametricDeliveryDate TEXT NOT NULL DEFAULT '';");
     }
     if (!estColNames.has('techResponsable')) {
       await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN techResponsable TEXT NOT NULL DEFAULT '';");
