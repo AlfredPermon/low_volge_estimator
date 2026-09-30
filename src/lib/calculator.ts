@@ -196,6 +196,9 @@ export function calculateRealTrajectories(
 
     const retDx = Math.abs(targetRack.x - prevPoint.x) * scaleMetersPerPx;
     const retDy = Math.abs(targetRack.y - prevPoint.y) * scaleMetersPerPx;
+    // M5: Factor 1.15 compensa recorridos no ortogonales e imprevistos de instalación.
+    // El desperdicio de cable (wasteFactor) se aplica al total acumulado aguas arriba
+    // en extractProjectSpatialResults → no se duplica aquí.
     const returnSeg = (retDx + retDy) * 1.15 + rackRiseM + 2.0;
     cableTotalMeters += returnSeg;
   }
@@ -215,7 +218,8 @@ export function calculateRealTrajectories(
   const conduitTubes3m = Math.ceil(totalConduitMeters / 3);
   const traySections3m = Math.ceil(totalTrayMeters / 3);
   const boxes4x4Qty = nodes.length;
-  const emtConnectorsQty = conduitTubes3m * 2;
+  // M1: Conectores EMT = 2 por tubo (extremos) + 2 por caja 4×4 (entrada/salida conduit)
+  const emtConnectorsQty = conduitTubes3m * 2 + boxes4x4Qty * 2;
   const patchPanels48Qty = starNodes.length > 0 ? Math.ceil(starNodes.length / 48) : 0;
   const patchCordsQty = starNodes.length * 2;
 
@@ -606,7 +610,12 @@ function sumLineItems(items: LineItem[]): { materials: number; labor: number; en
 export function extractProjectSpatialResults(
   rawFloorplanConfig: any,
   rackRiseMDefault: number = 2.5,
-  slackMDefault: number = 4.0
+  slackMDefault: number = 4.0,
+  /**
+   * M2: Factor de desperdicio de cable (0.08 = 8 %). Debe coincidir con
+   * EstimateFactors.wasteFactorCable para que spools305m sea coherente con el BOM.
+   */
+  wasteFactor: number = 0.08
 ): SpatialCalculationResult {
   const fps = getFloorplansList(rawFloorplanConfig);
 
@@ -616,6 +625,8 @@ export function extractProjectSpatialResults(
   const warnings: string[] = [];
   const nodeDistances: Record<string, number> = {};
   const routes: Record<string, Point[]> = {};
+  // M3: Solo nodos de topología estrella (no incendio/extintor/salida) van a patch panel
+  let starNodeCountTotal = 0;
 
   for (const fp of fps) {
     if (!fp.devices || fp.devices.length === 0) continue;
@@ -648,17 +659,23 @@ export function extractProjectSpatialResults(
     res.warnings.forEach((w) => warnings.push(`${prefix}${w}`));
     Object.assign(nodeDistances, res.nodeDistances);
     Object.assign(routes, res.routes);
+    // M3: Acumular solo dispositivos de topología estrella para dimensionar patch panels
+    starNodeCountTotal += fp.devices.filter(
+      (d) => d.system !== "fire" && d.system !== "extinguisher" && d.system !== "emergency_exit"
+    ).length;
   }
 
-  const cableWithWaste = cableTotalMeters * 1.08;
+  // M2: Usar wasteFactor configurable (era 1.08 hardcodeado)
+  const cableWithWaste = cableTotalMeters * (1 + wasteFactor);
   const spools305m = Math.ceil(cableWithWaste / 305);
   const conduitTubes3m = Math.ceil(totalConduitMeters / 3);
   const traySections3m = Math.ceil(totalTrayMeters / 3);
   const boxes4x4Qty = Object.keys(nodeDistances).length;
-  const emtConnectorsQty = conduitTubes3m * 2;
-  const starNodeCount = Object.keys(nodeDistances).length;
-  const patchPanels48Qty = starNodeCount > 0 ? Math.ceil(starNodeCount / 48) : 0;
-  const patchCordsQty = starNodeCount * 2;
+  // M1: Conectores EMT = 2 por tubo (extremos) + 2 por caja 4×4 (entrada/salida conduit)
+  const emtConnectorsQty = conduitTubes3m * 2 + boxes4x4Qty * 2;
+  // M3: Patch panels solo para nodos de topología estrella (incendio usa lazo SLC, no patch)
+  const patchPanels48Qty = starNodeCountTotal > 0 ? Math.ceil(starNodeCountTotal / 48) : 0;
+  const patchCordsQty = starNodeCountTotal * 2;
 
   return {
     cableTotalMeters: Math.round(cableTotalMeters * 100) / 100,
@@ -724,7 +741,7 @@ export function calculateCCTV(
   const fps = getFloorplansList(floorplanConfig);
   const hasCctvSpatial = fps.some((fp) => fp.devices && fp.devices.some((d) => d.system === "cctv"));
   const spatialResult = hasCctvSpatial
-    ? extractProjectSpatialResults(floorplanConfig, factors.verticalDrop ?? 2.5, factors.rackAllowance ?? 4.0)
+    ? extractProjectSpatialResults(floorplanConfig, factors.verticalDrop ?? 2.5, factors.rackAllowance ?? 4.0, factors.wasteFactorCable ?? 0.08)
     : null;
 
   // Cable calculation for cameras
@@ -1214,7 +1231,7 @@ export function calculateCCTV(
           idx++,
           systemPrefix,
           "CCTV",
-          "CAN-LOT",
+          "CCTV-CAN-LOT", // M6: código único por sistema para evitar error code_duplicate en validador
           lotMatch.description,
           lotMatch.unit ?? "LOTE",
           hasAnyCctv ? 1 : 0,
@@ -1241,7 +1258,7 @@ export function calculateCCTV(
           idx++,
           systemPrefix,
           "CCTV",
-          "CAN-LOT",
+          "CCTV-CAN-LOT", // M6: código único por sistema para evitar error code_duplicate en validador
           `Canalización (LOTE) para CCTV (${round2(conduitLengthMeters)} ml)`,
           "lote",
           hasAnyCctv ? 1 : 0,

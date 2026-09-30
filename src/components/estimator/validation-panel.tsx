@@ -118,17 +118,17 @@ export default function ValidationPanel() {
 function ValidationChecklist() {
   const items = [
     {
-      code: 'B1',
+      code: 'B1-DUP',  // M4: código único por regla
       label: 'Códigos duplicados',
       desc: 'No se permiten dos partidas con el mismo código de negocio.',
     },
     {
-      code: 'B1',
+      code: 'B1-QTY',
       label: 'Cantidad cero con costo',
       desc: 'Una partida con costo mayor a 0 no debe tener cantidad 0.',
     },
     {
-      code: 'B1',
+      code: 'B1-ZERO',
       label: 'Material / MO en cero',
       desc: 'Categorías Equipo y Mano de Obra deben tener importe > 0.',
     },
@@ -138,7 +138,7 @@ function ValidationChecklist() {
       desc: 'Las unidades deben estar en formato canónico (ML, PZA, LOTE, etc).',
     },
     {
-      code: 'B1',
+      code: 'B1-NEG',
       label: 'Sin valores negativos',
       desc: 'Cantidad, P.U. e importe no deben ser negativos.',
     },
