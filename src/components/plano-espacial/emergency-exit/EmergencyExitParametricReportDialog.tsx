@@ -68,6 +68,8 @@ export function EmergencyExitParametricReportDialog({
   const currency = useEstimateStore((s) => s.currency);
   const revision = useEstimateStore((s) => s.revision);
   const responsible = useEstimateStore((s) => s.responsible);
+  const riskResponsable = useEstimateStore((s) => s.riskResponsable);
+  const currentDate = new Date().toLocaleDateString('es-MX');
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
@@ -85,7 +87,9 @@ export function EmergencyExitParametricReportDialog({
   const pdfMeta: EmergencySignagePdfMetadata = {
     projectName: projectName || estimateName || 'Estimación General',
     clientName: clientName || 'Cliente General',
-    responsible: responsible || 'Ing. Responsable de Proyecto',
+    responsible: riskResponsable || responsible || 'Control de Riesgos',
+    riskResponsable: riskResponsable || 'Control de Riesgos',
+    generatedDate: currentDate,
     revision: revision || 'Rev. 1',
     currency,
     subtotalMaterials,
@@ -204,9 +208,21 @@ export function EmergencyExitParametricReportDialog({
                 </div>
                 <div className="flex items-center justify-between text-stone-300 print:text-stone-800">
                   <span className="flex items-center gap-1.5 font-bold">
-                    <Calendar className="w-4 h-4 text-emerald-400 print:text-emerald-700" /> Revisión / Fecha:
+                    <User className="w-4 h-4 text-emerald-400 print:text-emerald-700" /> Responsable:
                   </span>
-                  <span className="font-mono">{revision || 'Rev. 1'} · {new Date().toLocaleDateString('es-MX')}</span>
+                  <span className="font-semibold text-white print:text-black">{riskResponsable || 'Control de Riesgos'}</span>
+                </div>
+                <div className="flex items-center justify-between text-stone-300 print:text-stone-800">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Calendar className="w-4 h-4 text-emerald-400 print:text-emerald-700" /> Fecha:
+                  </span>
+                  <span className="font-mono text-white print:text-black">{currentDate}</span>
+                </div>
+                <div className="flex items-center justify-between text-stone-300 print:text-stone-800">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Calendar className="w-4 h-4 text-emerald-400 print:text-emerald-700" /> Revisión:
+                  </span>
+                  <span className="font-mono">{revision || 'Rev. 1'}</span>
                 </div>
               </div>
             </div>
@@ -353,37 +369,7 @@ export function EmergencyExitParametricReportDialog({
               </div>
             </div>
 
-            {/* ─── Cuadro de Validación y Firmas Ejecutivas ─── */}
-            <div className="signature-block pt-8 border-t border-white/10 print:border-stone-400">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-300 print:text-black mb-8 text-center">
-                Cuadro de Firmas y Validación Técnica del Dictamen
-              </h4>
-              <div className="grid grid-cols-3 gap-6 text-center text-xs">
-                <div className="space-y-8">
-                  <div className="border-b border-stone-600 print:border-black mx-4"></div>
-                  <div>
-                    <p className="font-bold text-white print:text-black">{responsible || 'Ing. Responsable de Proyecto'}</p>
-                    <p className="text-[11px] text-stone-400 print:text-stone-600">Elaboró / Especialista PCI & Señalización</p>
-                  </div>
-                </div>
 
-                <div className="space-y-8">
-                  <div className="border-b border-stone-600 print:border-black mx-4"></div>
-                  <div>
-                    <p className="font-bold text-white print:text-black">Supervisión Normativa STPS</p>
-                    <p className="text-[11px] text-stone-400 print:text-stone-600">Revisó NOM-026-STPS-2008</p>
-                  </div>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="border-b border-stone-600 print:border-black mx-4"></div>
-                  <div>
-                    <p className="font-bold text-white print:text-black">{clientName || 'Aprobación del Cliente'}</p>
-                    <p className="text-[11px] text-stone-400 print:text-stone-600">Aprobó / Cliente Representante</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </motion.div>
 
           {/* Footer del diálogo (oculto al imprimir) */}

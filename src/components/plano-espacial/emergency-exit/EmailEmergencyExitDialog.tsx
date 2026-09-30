@@ -61,7 +61,7 @@ Por medio del presente correo, me permito compartirles el Dictamen de Estimació
 --------------------------------------------------
   * Proyecto            : ${meta.projectName || 'Estimación General'}
   * Cliente             : ${meta.clientName || 'Cliente General'}
-  * Responsable Técnica : ${meta.responsible || 'Ing. Responsable de Proyecto'}
+  * Responsable (Riesgos): ${meta.riskResponsable || meta.responsible || 'Control de Riesgos'}
   * Revisión / Fecha    : ${meta.revision || 'Rev. 1'} · ${fecha}
   * Moneda              : ${currency}
 
@@ -82,13 +82,13 @@ Por medio del presente correo, me permito compartirles el Dictamen de Estimació
 ${breakdownLines || '  (Sin señales sembradas en el plano)'}
 
 --------------------------------------------------
-Se adjunta el dictamen oficial paramétrico en formato PDF con las especificaciones técnicas de color (Verde #00A651 >= 50%), fórmulas de visibilidad S >= L^2 / 2000, matriz de normatividad y cuadro de firmas.
+Se adjunta el dictamen oficial paramétrico en formato PDF con las especificaciones técnicas de color (Verde #00A651 >= 50%), fórmulas de visibilidad S >= L^2 / 2000 y matriz de normatividad.
 
 En caso de requerir aclaraciones o ajustes en el dictamen, quedamos a su disposición.
 
 Atentamente,
 
-${meta.responsible || 'Ing. Responsable de Proyecto'}
+${meta.riskResponsable || meta.responsible || 'Control de Riesgos'}
 ${meta.clientName ? `Para: ${meta.clientName}` : ''}
 `;
 }

@@ -355,6 +355,8 @@ export interface ExtinguisherPdfMetadata {
   projectName?: string;
   clientName?: string;
   responsible?: string;
+  riskResponsable?: string;
+  generatedDate?: string;
   revision?: string;
   currency?: "MXN" | "USD";
   subtotalAmount: number;
@@ -378,6 +380,8 @@ export function exportExtinguisherReportToPDF(
   const margin = 14;
   const rightX = pageW - margin;
   const currency = meta.currency || "MXN";
+  const dateStr = meta.generatedDate || new Date().toLocaleDateString('es-MX');
+  const respName = meta.riskResponsable || meta.responsible || "Control de Riesgos";
   let y = margin;
 
   // ─── Header Principal (GESTION DE RIESGOS Y CONTROL)
@@ -411,7 +415,9 @@ export function exportExtinguisherReportToPDF(
   y += 4;
   doc.text(`Proyecto: ${meta.projectName || "Estimación General"}`, margin, y);
   y += 4;
-  doc.text(`Responsable: ${meta.responsible || "Ing. Responsable de Proyecto"}`, margin, y);
+  doc.text(`Responsable: ${respName}`, margin, y);
+  y += 4;
+  doc.text(`Fecha: ${dateStr}`, margin, y);
   y += 4;
   doc.text(`Moneda: ${currency}`, margin, y);
   y += 7;
@@ -581,12 +587,12 @@ export function exportExtinguisherReportToPDF(
 
   y += 8;
 
-  // ─── Cuadro de Firmas y Validación Técnica
+  if (false) { // Cuadro de Firmas y Validación Técnica (Eliminado)
   ensureSpace(35);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(40, 40, 40);
-  doc.text("Cuadro de Firmas y Validación Técnica del Dictamen", pageW / 2, y, { align: "center" });
+  // Sección Cuadro de Firmas eliminada
   y += 14;
 
   const colW = (pageW - margin * 2) / 3;
@@ -613,6 +619,8 @@ export function exportExtinguisherReportToPDF(
   doc.text("Elaboró / Especialista PCI", sig1X, y, { align: "center" });
   doc.text("Revisó Normatividad STPS/SSA3", sig2X, y, { align: "center" });
   doc.text("Aprobó / Cliente Representante", sig3X, y, { align: "center" });
+
+  } // Fin Cuadro de Firmas
 
   // ─── Footer Paginado
   const totalPages = doc.getNumberOfPages();
@@ -651,6 +659,8 @@ export interface EmergencySignagePdfMetadata {
   projectName?: string;
   clientName?: string;
   responsible?: string;
+  riskResponsable?: string;
+  generatedDate?: string;
   revision?: string;
   currency?: "MXN" | "USD";
   subtotalMaterials: number;
@@ -677,6 +687,8 @@ export function exportEmergencySignageReportToPDF(
   const margin = 14;
   const rightX = pageW - margin;
   const currency = meta.currency || "MXN";
+  const dateStr = meta.generatedDate || new Date().toLocaleDateString('es-MX');
+  const respName = meta.riskResponsable || meta.responsible || "Control de Riesgos";
   let y = margin;
 
   // ─── Header Principal (GESTION DE RIESGOS Y NORMAS STPS)
@@ -710,7 +722,9 @@ export function exportEmergencySignageReportToPDF(
   y += 4;
   doc.text(`Proyecto: ${meta.projectName || "Estimación General"}`, margin, y);
   y += 4;
-  doc.text(`Responsable: ${meta.responsible || "Ing. Responsable de Proyecto"}`, margin, y);
+  doc.text(`Responsable: ${respName}`, margin, y);
+  y += 4;
+  doc.text(`Fecha: ${dateStr}`, margin, y);
   y += 4;
   doc.text(`Moneda: ${currency} · Cumplimiento Normativo: ${meta.compliancePercent}%`, margin, y);
   y += 7;
@@ -884,7 +898,7 @@ export function exportEmergencySignageReportToPDF(
 
   y += 8;
 
-  // ─── Cuadro de Firmas y Validación Técnica
+  if (false) { // Cuadro de Firmas y Validación Técnica (Eliminado)
   ensureSpace(35);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -916,6 +930,8 @@ export function exportEmergencySignageReportToPDF(
   doc.text("Elaboró / Especialista PCI", sig1X, y, { align: "center" });
   doc.text("Revisó NOM-026-STPS-2008", sig2X, y, { align: "center" });
   doc.text("Aprobó / Cliente Representante", sig3X, y, { align: "center" });
+
+  } // Fin Cuadro de Firmas
 
   // ─── Footer Paginado
   const totalPages = doc.getNumberOfPages();

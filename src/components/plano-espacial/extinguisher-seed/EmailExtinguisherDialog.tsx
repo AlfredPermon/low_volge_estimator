@@ -61,7 +61,7 @@ Por medio del presente correo, me permito compartirles el Dictamen de Estimació
 --------------------------------------------------
   * Proyecto            : ${meta.projectName || 'Estimación General'}
   * Cliente             : ${meta.clientName || 'Cliente General'}
-  * Responsable Técnica : ${meta.responsible || 'Ing. Responsable de Proyecto'}
+  * Responsable (Riesgos): ${meta.riskResponsable || meta.responsible || 'Control de Riesgos'}
   * Revisión / Fecha    : ${meta.revision || 'Rev. 1'} · ${fecha}
   * Moneda              : ${currency}
 
@@ -80,13 +80,13 @@ Por medio del presente correo, me permito compartirles el Dictamen de Estimació
 ${breakdownLines || '  (Sin partidas sembradas en plano)'}
 
 --------------------------------------------------
-Se adjunta el reporte oficial paramétrico en formato PDF con la matriz de cumplimiento normativo hospitalario y cuadro de firmas de validación técnica.
+Se adjunta el reporte oficial paramétrico en formato PDF con la matriz de cumplimiento normativo hospitalario.
 
 En caso de requerir aclaraciones o ajustes en el dictamen, quedamos a su disposición.
 
 Atentamente,
 
-${meta.responsible || 'Ing. Responsable de Proyecto'}
+${meta.riskResponsable || meta.responsible || 'Control de Riesgos'}
 ${meta.clientName ? `Para: ${meta.clientName}` : ''}
 `;
 }
