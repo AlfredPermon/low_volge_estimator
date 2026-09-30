@@ -54,10 +54,16 @@ import {
   ShieldCheck,
   Users,
   FileSpreadsheet,
+  MessageSquare,
+  Mail,
+  Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import UsersView from '@/components/users/users-view';
 import { isAdminRole } from '@/lib/auth-constants';
+import NotificationsCenter from '@/components/notifications/notifications-center';
+import TeamsNotificationDialog from '@/components/estimator/teams-notification-dialog';
+import { useNotificationStore } from '@/store/notification-store';
 import {
   normalizeRecentEstimateEntries,
   removeFromRecentEstimateEntries,
@@ -109,6 +115,31 @@ export default function Home() {
   const [recentSearch, setRecentSearch] = useState('');
   const [recentStatus, setRecentStatus] = useState<EstimateStatusFilter>('all');
   const [recentDate, setRecentDate] = useState<EstimateDateFilter>('all');
+  const [teamsDialogOpen, setTeamsDialogOpen] = useState(false);
+  const addNotification = useNotificationStore((state) => state.addNotification);
+
+  const handleSelectParametricDate = (dateStr: string) => {
+    store.setParametricDeliveryDate(dateStr);
+    const formatted = new Date(dateStr).toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    addNotification({
+      title: 'Fecha de Entrega Paramétricos Registrada',
+      message: `Asignada fecha: ${formatted}. Se puede notificar a los Responsables por Departamento vía Teams.`,
+      type: 'teams',
+      projectName: store.projectName || store.name || 'Sin nombre',
+      parametricDeliveryDate: dateStr,
+    });
+    toast.info(`Fecha de Entrega Paramétricos capturada (${formatted}). Notificación Teams preparada.`, {
+      action: {
+        label: 'Ver Teams',
+        onClick: () => setTeamsDialogOpen(true),
+      },
+      duration: 6000,
+    });
+  };
 
   // Verificar la sesión del usuario al cargar
   useEffect(() => {
@@ -143,11 +174,16 @@ export default function Home() {
     revision: string;
     responsible: string;
     projectManager: string;
+    projectManagerEmail: string;
     startDate: string;
     endDate: string;
+    parametricDeliveryDate: string;
     techResponsable: string;
+    techResponsableEmail: string;
     envResponsable: string;
+    envResponsableEmail: string;
     riskResponsable: string;
+    riskResponsableEmail: string;
     notes: string;
     factorsNotes: string;
   } | null>(null);
@@ -208,12 +244,16 @@ export default function Home() {
       revision: store.revision,
       responsible: store.responsible,
       projectManager: store.projectManager,
+      projectManagerEmail: store.projectManagerEmail,
       startDate: store.startDate,
       endDate: store.endDate,
       parametricDeliveryDate: store.parametricDeliveryDate,
       techResponsable: store.techResponsable,
+      techResponsableEmail: store.techResponsableEmail,
       envResponsable: store.envResponsable,
+      envResponsableEmail: store.envResponsableEmail,
       riskResponsable: store.riskResponsable,
+      riskResponsableEmail: store.riskResponsableEmail,
       notes: store.notes,
       factorsNotes: store.factorsNotes,
     };
@@ -225,12 +265,16 @@ export default function Home() {
     store.revision,
     store.responsible,
     store.projectManager,
+    store.projectManagerEmail,
     store.startDate,
     store.endDate,
     store.parametricDeliveryDate,
     store.techResponsable,
+    store.techResponsableEmail,
     store.envResponsable,
+    store.envResponsableEmail,
     store.riskResponsable,
+    store.riskResponsableEmail,
     store.notes,
     store.factorsNotes,
   ]);
@@ -278,12 +322,16 @@ export default function Home() {
           revision: state.revision,
           responsible: state.responsible,
           projectManager: state.projectManager,
+          projectManagerEmail: state.projectManagerEmail,
           startDate: state.startDate,
           endDate: state.endDate,
           parametricDeliveryDate: state.parametricDeliveryDate,
           techResponsable: state.techResponsable,
+          techResponsableEmail: state.techResponsableEmail,
           envResponsable: state.envResponsable,
+          envResponsableEmail: state.envResponsableEmail,
           riskResponsable: state.riskResponsable,
+          riskResponsableEmail: state.riskResponsableEmail,
           notes: state.notes,
           factorsNotes: state.factorsNotes,
           wasteFactorCable: state.factors.wasteFactorCable,
@@ -349,12 +397,16 @@ export default function Home() {
       store.revision !== snap.revision ||
       store.responsible !== snap.responsible ||
       store.projectManager !== snap.projectManager ||
+      store.projectManagerEmail !== snap.projectManagerEmail ||
       store.startDate !== snap.startDate ||
       store.endDate !== snap.endDate ||
       store.parametricDeliveryDate !== snap.parametricDeliveryDate ||
       store.techResponsable !== snap.techResponsable ||
+      store.techResponsableEmail !== snap.techResponsableEmail ||
       store.envResponsable !== snap.envResponsable ||
+      store.envResponsableEmail !== snap.envResponsableEmail ||
       store.riskResponsable !== snap.riskResponsable ||
+      store.riskResponsableEmail !== snap.riskResponsableEmail ||
       store.notes !== snap.notes ||
       store.factorsNotes !== snap.factorsNotes;
     if (!changed) return;
@@ -369,12 +421,16 @@ export default function Home() {
     store.revision,
     store.responsible,
     store.projectManager,
+    store.projectManagerEmail,
     store.startDate,
     store.endDate,
     store.parametricDeliveryDate,
     store.techResponsable,
+    store.techResponsableEmail,
     store.envResponsable,
+    store.envResponsableEmail,
     store.riskResponsable,
+    store.riskResponsableEmail,
     store.notes,
     store.factorsNotes,
     createDraftEstimate,
@@ -399,12 +455,16 @@ export default function Home() {
         revision: store.revision,
         responsible: store.responsible,
         projectManager: store.projectManager,
+        projectManagerEmail: store.projectManagerEmail,
         startDate: store.startDate,
         endDate: store.endDate,
         parametricDeliveryDate: store.parametricDeliveryDate,
         techResponsable: store.techResponsable,
+        techResponsableEmail: store.techResponsableEmail,
         envResponsable: store.envResponsable,
+        envResponsableEmail: store.envResponsableEmail,
         riskResponsable: store.riskResponsable,
+        riskResponsableEmail: store.riskResponsableEmail,
         notes: store.notes,
         factorsNotes: store.factorsNotes,
         wasteFactorCable: store.factors.wasteFactorCable,
@@ -780,10 +840,18 @@ export default function Home() {
           placeholder="Nombre del Project Manager"
           className="h-10"
         />
+        <Input
+          id="projectManagerEmail"
+          type="email"
+          value={store.projectManagerEmail}
+          onChange={(e) => store.setProjectManagerEmail(e.target.value)}
+          placeholder="Correo / Teams: pm@empresa.com"
+          className="h-8 text-xs border-stone-200"
+        />
       </div>
       
       {/* Fechas del Proyecto */}
-      <div className="space-y-2 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="space-y-2 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6 bg-stone-50/70 p-4 rounded-xl border border-stone-200">
         <div className="space-y-2">
           <Label htmlFor="startDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
             <CalendarDays className="w-4 h-4" /> Fecha Inicio
@@ -793,7 +861,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal h-10",
+                  "w-full justify-start text-left font-normal h-10 bg-white",
                   !store.startDate && "text-muted-foreground"
                 )}
               >
@@ -813,19 +881,32 @@ export default function Home() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="parametricDeliveryDate" className="text-sm font-medium text-stone-700 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" /> Fecha Entrega Paramétricos
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="parametricDeliveryDate" className="text-sm font-bold text-emerald-800 flex items-center gap-1.5">
+              <CalendarDays className="w-4 h-4 text-emerald-600" /> Entrega Paramétricos
+            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setTeamsDialogOpen(true)}
+              className="h-6 text-[10px] px-2 bg-[#464EB8] text-white hover:bg-[#3B3E99] border-none gap-1 font-bold shadow-sm"
+              title="Notificar por Teams"
+            >
+              <MessageSquare className="w-3 h-3" />
+              Teams
+            </Button>
+          </div>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal h-10 transition-colors hover:border-emerald-500",
+                  "w-full justify-start text-left font-normal h-10 bg-white transition-colors border-emerald-300 hover:border-emerald-500 font-semibold text-emerald-900",
                   !store.parametricDeliveryDate && "text-muted-foreground"
                 )}
               >
-                <CalendarDays className="mr-2 h-4 w-4" />
+                <CalendarDays className="mr-2 h-4 w-4 text-emerald-600" />
                 {store.parametricDeliveryDate ? new Date(store.parametricDeliveryDate).toLocaleDateString('es-MX') : "Seleccionar fecha"}
               </Button>
             </PopoverTrigger>
@@ -833,7 +914,7 @@ export default function Home() {
               <Calendar
                 mode="single"
                 selected={store.parametricDeliveryDate ? new Date(store.parametricDeliveryDate) : undefined}
-                onSelect={(date) => date && store.setParametricDeliveryDate(date.toISOString())}
+                onSelect={(date) => date && handleSelectParametricDate(date.toISOString())}
                 initialFocus
               />
             </PopoverContent>
@@ -849,7 +930,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal h-10",
+                  "w-full justify-start text-left font-normal h-10 bg-white",
                   !store.endDate && "text-muted-foreground"
                 )}
               >
@@ -871,12 +952,18 @@ export default function Home() {
 
       {/* Responsables por Departamento */}
       <div className="space-y-2 sm:col-span-2">
-        <Label className="text-sm font-medium text-stone-700 flex items-center gap-2">
-          <Users className="w-4 h-4" /> Responsables por Departamento
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-bold text-stone-800 flex items-center gap-2">
+            <Users className="w-4 h-4 text-emerald-600" /> Responsables por Departamento & Contacts
+          </Label>
+          <span className="text-xs text-stone-500">Correos para envío de notificaciones Teams</span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-          <div className="space-y-1">
-            <Label htmlFor="techResponsable" className="text-xs font-medium text-stone-600">Tecnologías de Seguridad</Label>
+          {/* Tecnologías de Seguridad */}
+          <div className="space-y-2 bg-white p-3 rounded-xl border border-stone-200">
+            <Label htmlFor="techResponsable" className="text-xs font-bold text-stone-700 block">
+              🛡️ Tecnologías de Seguridad
+            </Label>
             <Input
               id="techResponsable"
               value={store.techResponsable}
@@ -884,9 +971,21 @@ export default function Home() {
               placeholder="Nombre del responsable"
               className="h-9 text-sm"
             />
+            <Input
+              id="techResponsableEmail"
+              type="email"
+              value={store.techResponsableEmail}
+              onChange={(e) => store.setTechResponsableEmail(e.target.value)}
+              placeholder="Correo / Teams: tech@empresa.com"
+              className="h-8 text-xs border-stone-200"
+            />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="envResponsable" className="text-xs font-medium text-stone-600">Medio Ambiente</Label>
+
+          {/* Medio Ambiente */}
+          <div className="space-y-2 bg-white p-3 rounded-xl border border-stone-200">
+            <Label htmlFor="envResponsable" className="text-xs font-bold text-stone-700 block">
+              🌿 Medio Ambiente
+            </Label>
             <Input
               id="envResponsable"
               value={store.envResponsable}
@@ -894,15 +993,35 @@ export default function Home() {
               placeholder="Nombre del responsable"
               className="h-9 text-sm"
             />
+            <Input
+              id="envResponsableEmail"
+              type="email"
+              value={store.envResponsableEmail}
+              onChange={(e) => store.setEnvResponsableEmail(e.target.value)}
+              placeholder="Correo / Teams: env@empresa.com"
+              className="h-8 text-xs border-stone-200"
+            />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="riskResponsable" className="text-xs font-medium text-stone-600">Control de Riesgos</Label>
+
+          {/* Control de Riesgos */}
+          <div className="space-y-2 bg-white p-3 rounded-xl border border-stone-200">
+            <Label htmlFor="riskResponsable" className="text-xs font-bold text-stone-700 block">
+              ⚠️ Control de Riesgos
+            </Label>
             <Input
               id="riskResponsable"
               value={store.riskResponsable}
               onChange={(e) => store.setRiskResponsable(e.target.value)}
               placeholder="Nombre del responsable"
               className="h-9 text-sm"
+            />
+            <Input
+              id="riskResponsableEmail"
+              type="email"
+              value={store.riskResponsableEmail}
+              onChange={(e) => store.setRiskResponsableEmail(e.target.value)}
+              placeholder="Correo / Teams: riesgo@empresa.com"
+              className="h-8 text-xs border-stone-200"
             />
           </div>
         </div>
@@ -944,6 +1063,7 @@ export default function Home() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
+                <NotificationsCenter onOpenTeamsModal={() => setTeamsDialogOpen(true)} />
                 <Button variant="outline" size="sm" onClick={handleNew} className="gap-1.5 text-stone-600">
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Nuevo</span>
@@ -1409,6 +1529,23 @@ export default function Home() {
           </div>
         </footer>
       )}
+      {/* ── Modal de Notificaciones Microsoft Teams ───────────────────── */}
+      <TeamsNotificationDialog
+        open={teamsDialogOpen}
+        onOpenChange={setTeamsDialogOpen}
+        projectName={store.projectName || store.name}
+        clientName={store.clientName}
+        parametricDeliveryDate={store.parametricDeliveryDate}
+        techResponsable={store.techResponsable}
+        techResponsableEmail={store.techResponsableEmail}
+        envResponsable={store.envResponsable}
+        envResponsableEmail={store.envResponsableEmail}
+        riskResponsable={store.riskResponsable}
+        riskResponsableEmail={store.riskResponsableEmail}
+        projectManager={store.projectManager}
+        projectManagerEmail={store.projectManagerEmail}
+        notes={store.notes}
+      />
     </div>
   );
 }

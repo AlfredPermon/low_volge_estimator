@@ -73,11 +73,23 @@ export async function ensureDatabaseSchema() {
     if (!estColNames.has('techResponsable')) {
       await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN techResponsable TEXT NOT NULL DEFAULT '';");
     }
+    if (!estColNames.has('techResponsableEmail')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN techResponsableEmail TEXT NOT NULL DEFAULT '';");
+    }
     if (!estColNames.has('envResponsable')) {
       await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN envResponsable TEXT NOT NULL DEFAULT '';");
     }
+    if (!estColNames.has('envResponsableEmail')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN envResponsableEmail TEXT NOT NULL DEFAULT '';");
+    }
     if (!estColNames.has('riskResponsable')) {
       await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN riskResponsable TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('riskResponsableEmail')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN riskResponsableEmail TEXT NOT NULL DEFAULT '';");
+    }
+    if (!estColNames.has('projectManagerEmail')) {
+      await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN projectManagerEmail TEXT NOT NULL DEFAULT '';");
     }
 
     // 3.b Eliminación del factor "Utilidad" del paramétrico (presupuesto

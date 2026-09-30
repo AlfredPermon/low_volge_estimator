@@ -266,9 +266,13 @@ interface EstimateStore {
   parametricDeliveryDate: string;
   // Responsables por departamento
   techResponsable: string;
+  techResponsableEmail: string;
   envResponsable: string;
+  envResponsableEmail: string;
   riskResponsable: string;
+  riskResponsableEmail: string;
   projectManager: string;
+  projectManagerEmail: string;
 
   // System configs & Building Levels
   buildingLevels: BuildingLevel[];
@@ -321,9 +325,13 @@ interface EstimateStore {
   setEndDate: (date: string) => void;
   setParametricDeliveryDate: (date: string) => void;
   setTechResponsable: (name: string) => void;
+  setTechResponsableEmail: (email: string) => void;
   setEnvResponsable: (name: string) => void;
+  setEnvResponsableEmail: (email: string) => void;
   setRiskResponsable: (name: string) => void;
+  setRiskResponsableEmail: (email: string) => void;
   setProjectManager: (name: string) => void;
+  setProjectManagerEmail: (email: string) => void;
   setCctvConfig: (config: CctvConfig) => void;
   setAccessConfig: (config: AccessConfig) => void;
   setPagingConfig: (config: PagingConfig) => void;
@@ -935,9 +943,13 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   endDate: "",
   parametricDeliveryDate: "",
   techResponsable: "",
+  techResponsableEmail: "",
   envResponsable: "",
+  envResponsableEmail: "",
   riskResponsable: "",
+  riskResponsableEmail: "",
   projectManager: "",
+  projectManagerEmail: "",
 
   buildingLevels: DEFAULT_BUILDING_LEVELS,
   cctvConfig: defaultCctv,
@@ -974,9 +986,13 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   setEndDate: (endDate) => set({ endDate }),
   setParametricDeliveryDate: (parametricDeliveryDate) => set({ parametricDeliveryDate }),
   setTechResponsable: (techResponsable) => set({ techResponsable }),
+  setTechResponsableEmail: (techResponsableEmail) => set({ techResponsableEmail }),
   setEnvResponsable: (envResponsable) => set({ envResponsable }),
+  setEnvResponsableEmail: (envResponsableEmail) => set({ envResponsableEmail }),
   setRiskResponsable: (riskResponsable) => set({ riskResponsable }),
+  setRiskResponsableEmail: (riskResponsableEmail) => set({ riskResponsableEmail }),
   setProjectManager: (projectManager) => set({ projectManager }),
+  setProjectManagerEmail: (projectManagerEmail) => set({ projectManagerEmail }),
   setCctvConfig: (cctvConfig) => set({ cctvConfig }),
   setAccessConfig: (accessConfig) => set({ accessConfig }),
   setPagingConfig: (pagingConfig) => set({ pagingConfig }),
@@ -1368,9 +1384,13 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       endDate: (data.endDate as string) || "",
       parametricDeliveryDate: (data.parametricDeliveryDate as string) || "",
       techResponsable: (data.techResponsable as string) || "",
+      techResponsableEmail: (data.techResponsableEmail as string) || "",
       envResponsable: (data.envResponsable as string) || "",
+      envResponsableEmail: (data.envResponsableEmail as string) || "",
       riskResponsable: (data.riskResponsable as string) || "",
+      riskResponsableEmail: (data.riskResponsableEmail as string) || "",
       projectManager: (data.projectManager as string) || "",
+      projectManagerEmail: (data.projectManagerEmail as string) || "",
       buildingLevels: normFp.buildingLevels,
       cctvConfig: normalizeCctvConfig(data.cctvConfig),
       accessConfig: normalizeAccessConfig(data.accessConfig),
@@ -1418,9 +1438,13 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
       endDate: "",
       parametricDeliveryDate: "",
       techResponsable: "",
+      techResponsableEmail: "",
       envResponsable: "",
+      envResponsableEmail: "",
       riskResponsable: "",
+      riskResponsableEmail: "",
       projectManager: "",
+      projectManagerEmail: "",
       cctvConfig: defaultCctv,
       accessConfig: defaultAccess,
       pagingConfig: defaultPaging,
