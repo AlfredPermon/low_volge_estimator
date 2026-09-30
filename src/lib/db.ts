@@ -17,8 +17,10 @@ export async function ensureDatabaseSchema() {
         CREATE TABLE IF NOT EXISTS "User" (
           "id" TEXT NOT NULL PRIMARY KEY,
           "email" TEXT NOT NULL UNIQUE,
-          "passwordHash" TEXT NOT NULL,
+          "passwordHash" TEXT DEFAULT '',
           "name" TEXT NOT NULL,
+          "emailVerified" BOOLEAN NOT NULL DEFAULT 0,
+          "image" TEXT,
           "role" TEXT NOT NULL DEFAULT 'OPERATIVO',
           "active" BOOLEAN NOT NULL DEFAULT 1,
           "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -26,6 +28,16 @@ export async function ensureDatabaseSchema() {
         );
       `);
       await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");');
+    } else {
+      // Verificar columnas adicionales en User
+      const userCols = (await db.$queryRawUnsafe('PRAGMA table_info("User");')) as Array<{ name: string }>;
+      const userColNames = new Set(Array.isArray(userCols) ? userCols.map((c) => c.name) : []);
+      if (!userColNames.has('emailVerified')) {
+        await db.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN emailVerified BOOLEAN NOT NULL DEFAULT 0;');
+      }
+      if (!userColNames.has('image')) {
+        await db.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN image TEXT;');
+      }
     }
 
     // 2. Tabla Session
@@ -36,18 +48,71 @@ export async function ensureDatabaseSchema() {
           "userId" TEXT NOT NULL,
           "token" TEXT NOT NULL UNIQUE,
           "expiresAt" DATETIME NOT NULL,
+          "ipAddress" TEXT,
+          "userAgent" TEXT,
           "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
         );
       `);
       await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Session_userId_idx" ON "Session"("userId");');
       await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "Session_token_key" ON "Session"("token");');
+    } else {
+      // Verificar columnas en Session
+      const sessionCols = (await db.$queryRawUnsafe('PRAGMA table_info("Session");')) as Array<{ name: string }>;
+      const sessionColNames = new Set(Array.isArray(sessionCols) ? sessionCols.map((c) => c.name) : []);
+      if (!sessionColNames.has('ipAddress')) {
+        await db.$executeRawUnsafe('ALTER TABLE "Session" ADD COLUMN ipAddress TEXT;');
+      }
+      if (!sessionColNames.has('userAgent')) {
+        await db.$executeRawUnsafe('ALTER TABLE "Session" ADD COLUMN userAgent TEXT;');
+      }
+      if (!sessionColNames.has('updatedAt')) {
+        await db.$executeRawUnsafe('ALTER TABLE "Session" ADD COLUMN updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;');
+      }
     }
 
-    // 3. Columna userId en Estimate
+    // 3. Tabla Account (Better Auth OAuth)
+    if (!tableNames.has('Account')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Account" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "userId" TEXT NOT NULL,
+          "accountId" TEXT NOT NULL,
+          "providerId" TEXT NOT NULL,
+          "accessToken" TEXT,
+          "refreshToken" TEXT,
+          "accessTokenExpiresAt" DATETIME,
+          "refreshTokenExpiresAt" DATETIME,
+          "scope" TEXT,
+          "idToken" TEXT,
+          "password" TEXT,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Account_userId_idx" ON "Account"("userId");');
+    }
+
+    // 4. Tabla Verification (Better Auth Verification)
+    if (!tableNames.has('Verification')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Verification" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "identifier" TEXT NOT NULL,
+          "value" TEXT NOT NULL,
+          "expiresAt" DATETIME NOT NULL,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    }
+
+    // 5. Columna userId y project fields en Estimate
     const estimateCols = (await db.$queryRawUnsafe('PRAGMA table_info(Estimate);')) as Array<{ name: string }>;
     const estColNames = new Set(Array.isArray(estimateCols) ? estimateCols.map((c) => c.name) : []);
-    
+
     if (!estColNames.has('hasManualEdits')) {
       await db.$executeRawUnsafe('ALTER TABLE Estimate ADD COLUMN hasManualEdits BOOLEAN NOT NULL DEFAULT 0;');
     }
@@ -92,29 +157,16 @@ export async function ensureDatabaseSchema() {
       await db.$executeRawUnsafe("ALTER TABLE Estimate ADD COLUMN projectManagerEmail TEXT NOT NULL DEFAULT '';");
     }
 
-    // 3.b Eliminación del factor "Utilidad" del paramétrico (presupuesto
-    // estimado para comité de inversiones: GT = Directo + Indirectos).
-    // Las columnas legacy se quitan de forma tolerante (SQLite >= 3.35).
-    for (const legacyCol of ['utilityFactor', 'subtotalUtility']) {
-      if (estColNames.has(legacyCol)) {
-        try {
-          await db.$executeRawUnsafe(`ALTER TABLE Estimate DROP COLUMN "${legacyCol}";`);
-        } catch (e) {
-          console.warn(`No se pudo eliminar la columna legacy Estimate.${legacyCol}:`, e);
-        }
-      }
-    }
-
-    // 4. Columna userId en PriceItem
+    // 6. Columna userId en PriceItem
     const priceCols = (await db.$queryRawUnsafe('PRAGMA table_info(PriceItem);')) as Array<{ name: string }>;
     const priceColNames = new Set(Array.isArray(priceCols) ? priceCols.map((c) => c.name) : []);
-    
+
     if (!priceColNames.has('userId')) {
       await db.$executeRawUnsafe('ALTER TABLE PriceItem ADD COLUMN userId TEXT;');
       await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "PriceItem_userId_idx" ON "PriceItem"("userId");');
     }
 
-    // 5. Historiales
+    // 7. Historiales
     if (!tableNames.has('EstimateHistory')) {
       await db.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "EstimateHistory" (

@@ -1,7 +1,8 @@
-import { cookies } from 'next/headers';
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { headers } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { prisma } from './prisma';
-import { ensureDatabaseSchema } from './db';
 import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_DAYS, isAdminRole, UserRole } from './auth-constants';
 
 export { SESSION_COOKIE_NAME, SESSION_MAX_AGE_DAYS, isAdminRole };
@@ -13,10 +14,55 @@ export interface AuthenticatedUser {
   name: string;
   role: UserRole;
   active: boolean;
+  image?: string | null;
 }
 
 /**
- * Generador de bytes aleatorios usando Web Crypto API
+ * Instancia del Servidor Better Auth
+ */
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: 'sqlite',
+  }),
+  secret: process.env.BETTER_AUTH_SECRET || 'lve-production-auth-secret-key-change-in-env',
+  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000',
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: true,
+  },
+  socialProviders: {
+    microsoft: {
+      clientId: process.env.MICROSOFT_CLIENT_ID || 'placeholder_client_id',
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET || 'placeholder_client_secret',
+      tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
+    },
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        defaultValue: 'OPERATIVO',
+        required: false,
+      },
+      active: {
+        type: 'boolean',
+        defaultValue: true,
+        required: false,
+      },
+    },
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 días de duración
+    updateAge: 60 * 60 * 24, // Actualización diaria
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
+  },
+});
+
+/**
+ * Generador de bytes aleatorios en formato Hex
  */
 export function getRandomHex(bytesCount: number = 32): string {
   const bytes = new Uint8Array(bytesCount);
@@ -31,7 +77,7 @@ export function getRandomHex(bytesCount: number = 32): string {
 }
 
 /**
- * Calcula un digest SHA-256 usando Web Crypto API (100% universal y compatible con Next.js Turbopack)
+ * Digest SHA-256 usando Web Crypto API
  */
 export async function computeSha256Hex(text: string): Promise<string> {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.subtle) {
@@ -45,7 +91,7 @@ export async function computeSha256Hex(text: string): Promise<string> {
 }
 
 /**
- * Genera un hash de contraseña asíncrono con SHA-256 y sal aleatoria
+ * Hash de contraseña asíncrono con sal para usuarios creados vía API
  */
 export async function hashPasswordAsync(password: string, saltInput?: string): Promise<string> {
   const salt = saltInput || getRandomHex(16);
@@ -54,57 +100,23 @@ export async function hashPasswordAsync(password: string, saltInput?: string): P
 }
 
 /**
- * Genera un hash síncrono compatible con sal
- */
-export function hashPassword(password: string): string {
-  const salt = getRandomHex(16);
-  let hashNum = 5381;
-  const str = password + salt;
-  for (let i = 0; i < str.length; i++) {
-    hashNum = (hashNum * 33) ^ str.charCodeAt(i);
-  }
-  const hashStr = Math.abs(hashNum).toString(16) + getRandomHex(20);
-  return `${salt}:${hashStr}`;
-}
-
-/**
- * Verificación asíncrona de contraseña usando Web Crypto SHA-256
+ * Verificación de contraseña asíncrona
  */
 export async function verifyPasswordAsync(password: string, storedHash: string): Promise<boolean> {
   try {
     const [salt, originalHash] = storedHash.split(':');
     if (!salt || !originalHash) return false;
     const computedHash = await computeSha256Hex(password + salt);
-    return computedHash === originalHash || verifyPassword(password, storedHash);
+    return computedHash === originalHash;
   } catch {
     return false;
   }
 }
 
 /**
- * Verificación síncrona de contraseña
- */
-export function verifyPassword(password: string, storedHash: string): boolean {
-  try {
-    const [salt, originalHash] = storedHash.split(':');
-    if (!salt || !originalHash) return false;
-    let hashNum = 5381;
-    const str = password + salt;
-    for (let i = 0; i < str.length; i++) {
-      hashNum = (hashNum * 33) ^ str.charCodeAt(i);
-    }
-    const computedPrefix = Math.abs(hashNum).toString(16);
-    return originalHash.startsWith(computedPrefix) || originalHash === computedPrefix;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Crea una sesión en BD para el usuario y genera el token aleatorio
+ * Creación de sesión directa (Compatibilidad)
  */
 export async function createSession(userId: string): Promise<string> {
-  await ensureDatabaseSchema();
   const token = getRandomHex(32);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_MAX_AGE_DAYS);
@@ -121,11 +133,10 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 /**
- * Elimina la sesión actual de la base de datos
+ * Destrucción de sesión directa
  */
 export async function destroySession(token: string): Promise<void> {
   try {
-    await ensureDatabaseSchema();
     await prisma.session.deleteMany({
       where: { token },
     });
@@ -135,59 +146,72 @@ export async function destroySession(token: string): Promise<void> {
 }
 
 /**
- * Obtiene el usuario autenticado desde la cookie de solicitud o contexto de Next.js
+ * Obtiene el usuario autenticado (Soporta Better Auth API & Session Tokens)
  */
 export async function getSessionUser(req?: NextRequest | Request): Promise<AuthenticatedUser | null> {
   try {
-    await ensureDatabaseSchema();
-    let token: string | undefined;
+    let reqHeaders: Headers;
 
+    if (req) {
+      reqHeaders = req.headers;
+    } else {
+      reqHeaders = await headers();
+    }
+
+    const session = await auth.api.getSession({
+      headers: reqHeaders,
+    });
+
+    if (session && session.user) {
+      const user = session.user as any;
+      if (user.active === false) return null;
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name || user.email.split('@')[0],
+        role: (user.role as UserRole) || 'OPERATIVO',
+        active: user.active !== false,
+        image: user.image || null,
+      };
+    }
+
+    // Fallback para tokens legacy
+    let token: string | undefined;
     if (req) {
       const cookieHeader = req.headers.get('cookie') || '';
       const match = cookieHeader.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`));
-      if (match) {
-        token = match[1];
-      }
-    }
-
-    if (!token) {
-      try {
-        const cookieStore = await cookies();
-        token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-      } catch {
-        // Fuera del contexto HTTP de Next.js
-      }
+      if (match) token = match[1];
     }
 
     if (!token) return null;
 
-    const session = await prisma.session.findUnique({
+    const legacySession = await prisma.session.findUnique({
       where: { token },
       include: { user: true },
     });
 
-    if (!session || !session.user || !session.user.active) return null;
-
-    if (new Date() > new Date(session.expiresAt)) {
-      await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+    if (!legacySession || !legacySession.user || !legacySession.user.active) return null;
+    if (new Date() > new Date(legacySession.expiresAt)) {
+      await prisma.session.delete({ where: { id: legacySession.id } }).catch(() => {});
       return null;
     }
 
     return {
-      id: session.user.id,
-      email: session.user.email,
-      name: session.user.name,
-      role: (session.user.role as UserRole) || 'OPERATIVO',
-      active: session.user.active,
+      id: legacySession.user.id,
+      email: legacySession.user.email,
+      name: legacySession.user.name,
+      role: (legacySession.user.role as UserRole) || 'OPERATIVO',
+      active: legacySession.user.active,
+      image: (legacySession.user as any).image || null,
     };
   } catch (error) {
-    console.error('Error in getSessionUser:', error);
+    console.error('Error en getSessionUser:', error);
     return null;
   }
 }
 
 /**
- * Jerarquía de permisos de usuario (RBAC)
+ * Jerarquía de permisos (RBAC)
  */
 const ROLE_HIERARCHY: Record<string, number> = {
   admin: 4,

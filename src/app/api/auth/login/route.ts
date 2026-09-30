@@ -46,6 +46,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!user.passwordHash) {
+      return NextResponse.json(
+        { error: 'Credenciales incorrectas o usuario desactivado' },
+        { status: 401 }
+      );
+    }
+
     const isValid = await verifyPasswordAsync(password, user.passwordHash);
     if (!isValid) {
       return NextResponse.json(
