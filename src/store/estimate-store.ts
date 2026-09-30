@@ -1556,41 +1556,58 @@ export const useEstimateStore = create<EstimateStore>((set, get) => ({
   saveEstimateToDb: async () => {
     const state = get();
     const estId = state.activeEstimateId || state.estimateId;
-    if (!estId || !state.result) return false;
+    if (!estId) return false;
     try {
+      const payload: Record<string, unknown> = {
+        name: state.name,
+        clientName: state.clientName,
+        projectName: state.projectName,
+        currency: state.currency,
+        revision: state.revision,
+        responsible: state.responsible,
+        projectManager: state.projectManager,
+        projectManagerEmail: state.projectManagerEmail,
+        startDate: state.startDate,
+        endDate: state.endDate,
+        parametricDeliveryDate: state.parametricDeliveryDate,
+        techResponsable: state.techResponsable,
+        techResponsableEmail: state.techResponsableEmail,
+        envResponsable: state.envResponsable,
+        envResponsableEmail: state.envResponsableEmail,
+        riskResponsable: state.riskResponsable,
+        riskResponsableEmail: state.riskResponsableEmail,
+        notes: state.notes,
+        factorsNotes: state.factorsNotes,
+        forceRecalc: false,
+        floorplanConfig: JSON.stringify({
+          buildingLevels: state.buildingLevels,
+          activeFloorplanId: state.activeFloorplanId,
+          floorplans: state.floorplans,
+        }),
+      };
+
+      if (state.result) {
+        payload.lineItems = state.result.lineItems;
+        payload.subtotalMaterials = state.result.subtotalMaterials;
+        payload.subtotalLabor = state.result.subtotalLabor;
+        payload.subtotalEngineering = state.result.subtotalEngineering;
+        payload.subtotalDirect = state.result.subtotalDirect;
+        payload.subtotalIndirects = state.result.subtotalIndirects;
+        payload.grandTotal = state.result.grandTotal;
+        payload.iva = state.result.iva;
+        payload.totalWithIva = state.result.totalWithIva;
+      }
+
       const res = await fetch(`/api/estimates/${estId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineItems: state.result.lineItems,
-          subtotalMaterials: state.result.subtotalMaterials,
-          subtotalLabor: state.result.subtotalLabor,
-          subtotalEngineering: state.result.subtotalEngineering,
-          subtotalDirect: state.result.subtotalDirect,
-          subtotalIndirects: state.result.subtotalIndirects,
-          grandTotal: state.result.grandTotal,
-          iva: state.result.iva,
-          totalWithIva: state.result.totalWithIva,
-          responsible: state.responsible,
-          projectManager: state.projectManager,
-          startDate: state.startDate,
-          endDate: state.endDate,
-          parametricDeliveryDate: state.parametricDeliveryDate,
-          techResponsable: state.techResponsable,
-          envResponsable: state.envResponsable,
-          riskResponsable: state.riskResponsable,
-          notes: state.notes,
-          factorsNotes: state.factorsNotes,
-          forceRecalc: false,
-          floorplanConfig: JSON.stringify({
-            buildingLevels: state.buildingLevels,
-            activeFloorplanId: state.activeFloorplanId,
-            floorplans: state.floorplans,
-          }),
-        }),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
-        set({ savedResult: { ...state.result }, isDirty: false });
+        if (state.result) {
+          set({ savedResult: { ...state.result }, isDirty: false });
+        }
         return true;
       }
       return false;

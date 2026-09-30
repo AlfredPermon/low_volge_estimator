@@ -436,6 +436,106 @@ export default function Home() {
     createDraftEstimate,
   ]);
 
+  // ─── Auto-Save Metadata & Responsables ─────────────────────────────────
+  const currentMetadataJson = useMemo(() => {
+    return JSON.stringify({
+      name: store.name,
+      clientName: store.clientName,
+      projectName: store.projectName,
+      currency: store.currency,
+      revision: store.revision,
+      responsible: store.responsible,
+      projectManager: store.projectManager,
+      projectManagerEmail: store.projectManagerEmail,
+      startDate: store.startDate,
+      endDate: store.endDate,
+      parametricDeliveryDate: store.parametricDeliveryDate,
+      techResponsable: store.techResponsable,
+      techResponsableEmail: store.techResponsableEmail,
+      envResponsable: store.envResponsable,
+      envResponsableEmail: store.envResponsableEmail,
+      riskResponsable: store.riskResponsable,
+      riskResponsableEmail: store.riskResponsableEmail,
+      notes: store.notes,
+      factorsNotes: store.factorsNotes,
+    });
+  }, [
+    store.name,
+    store.clientName,
+    store.projectName,
+    store.currency,
+    store.revision,
+    store.responsible,
+    store.projectManager,
+    store.projectManagerEmail,
+    store.startDate,
+    store.endDate,
+    store.parametricDeliveryDate,
+    store.techResponsable,
+    store.techResponsableEmail,
+    store.envResponsable,
+    store.envResponsableEmail,
+    store.riskResponsable,
+    store.riskResponsableEmail,
+    store.notes,
+    store.factorsNotes,
+  ]);
+
+  const lastSavedMetadataRef = useRef<string>('');
+
+  // Sync snapshot when an estimate is loaded or ID changes
+  useEffect(() => {
+    if (store.estimateId) {
+      lastSavedMetadataRef.current = currentMetadataJson;
+    }
+  }, [store.estimateId]);
+
+  // Debounced auto-save effect for metadata changes
+  useEffect(() => {
+    if (!store.estimateId) return;
+    if (!lastSavedMetadataRef.current) {
+      lastSavedMetadataRef.current = currentMetadataJson;
+      return;
+    }
+    if (currentMetadataJson === lastSavedMetadataRef.current) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const payload = JSON.parse(currentMetadataJson);
+        payload.forceRecalc = false;
+        const res = await fetch(`/api/estimates/${store.estimateId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          lastSavedMetadataRef.current = currentMetadataJson;
+          fetchEstimates();
+        }
+      } catch (err) {
+        console.error('Error auto-saving project configuration:', err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [currentMetadataJson, store.estimateId, fetchEstimates]);
+
+  // Flush pending changes on page exit / unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (store.estimateId && currentMetadataJson && currentMetadataJson !== lastSavedMetadataRef.current) {
+        fetch(`/api/estimates/${store.estimateId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: currentMetadataJson,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentMetadataJson, store.estimateId]);
+
   // ─── Save estimate ─────────────────────────────────────────────────────
 
   const handleSave = async (): Promise<string | null> => {
