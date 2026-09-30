@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, ensureDatabaseSchema } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    await ensureDatabaseSchema();
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDatabaseSchema();
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    await ensureDatabaseSchema();
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });

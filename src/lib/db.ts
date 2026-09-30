@@ -203,6 +203,39 @@ export async function ensureDatabaseSchema() {
       await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "PriceHistory_createdAt_idx" ON "PriceHistory"("createdAt");');
     }
 
+    // 8. Tabla CustomField
+    if (!tableNames.has('CustomField')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "CustomField" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "type" TEXT NOT NULL,
+          "value" TEXT NOT NULL,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "CustomField_type_value_key" ON "CustomField"("type", "value");');
+
+      const defaultFields = [
+        { type: 'system', value: 'CCTV' },
+        { type: 'system', value: 'ACCESO' },
+        { type: 'system', value: 'VOCEO' },
+        { type: 'system', value: 'INCENDIO' },
+        { type: 'system', value: 'CANALIZACION' },
+        { type: 'system', value: 'CABLEADO' },
+        { type: 'system', value: 'GENERAL' },
+        { type: 'category', value: 'Equipo' },
+        { type: 'category', value: 'Accesorio' },
+        { type: 'category', value: 'Consumible' },
+        { type: 'category', value: 'Mano de Obra' },
+        { type: 'category', value: 'Servicio' },
+      ];
+      for (const field of defaultFields) {
+        await db.$executeRawUnsafe(
+          `INSERT OR IGNORE INTO "CustomField" ("id", "type", "value", "createdAt") VALUES ('cf_' || lower(hex(randomblob(8))), '${field.type}', '${field.value}', CURRENT_TIMESTAMP);`
+        );
+      }
+    }
+
   } catch (err) {
     console.error('Auto-migration error:', err);
   }

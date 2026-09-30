@@ -291,7 +291,13 @@ export default function Home() {
     (async () => {
       try {
         const res = await fetch(`/api/estimates/${persistedId}`);
-        if (cancelled || !res.ok) return;
+        if (cancelled) return;
+        if (!res.ok) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('lve.currentEstimateId');
+          }
+          return;
+        }
         const data = await res.json();
         if (cancelled) return;
         store.loadEstimate(data);
