@@ -15,7 +15,7 @@ function safeBasename(name: string): string {
   return name.replace(/[^\w.-]+/g, "_");
 }
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     if (!id) {
@@ -32,11 +32,19 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
     const filename = safeBasename(doc.filename || "plano.pdf");
 
+    const searchParams = request.nextUrl.searchParams;
+    const isInline =
+      searchParams.get("inline") === "1" ||
+      searchParams.get("inline") === "true" ||
+      searchParams.get("disposition") === "inline";
+
+    const dispositionType = isInline ? "inline" : "attachment";
+
     return new NextResponse(buf, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `${dispositionType}; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });
@@ -45,4 +53,3 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: "Failed to download document" }, { status: 500 });
   }
 }
-

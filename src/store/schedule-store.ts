@@ -181,6 +181,11 @@ type ScheduleStore = {
     meta: { system: string; revision: string; status: string; uploadedBy: string; notes: string }
   ) => Promise<void>;
   getEngineeringDownloadUrl: (docId: string) => string;
+  getEngineeringPreviewUrl: (docId: string) => string;
+  deleteEngineeringDocument: (docId: string) => Promise<void>;
+  deleteEngineeringDocuments: (docIds: string[]) => Promise<void>;
+  downloadEngineeringDocument: (docId: string, filename?: string) => Promise<void>;
+  downloadEngineeringDocuments: (docIds: string[]) => Promise<void>;
   createBlocker: (data: {
     scheduleId: string;
     activityId: string;
@@ -362,6 +367,99 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   },
 
   getEngineeringDownloadUrl: (docId) => `/api/schedule/engineering/${encodeURIComponent(docId)}/download`,
+  getEngineeringPreviewUrl: (docId) => `/api/schedule/engineering/${encodeURIComponent(docId)}/download?inline=1`,
+
+  downloadEngineeringDocument: async (docId, filename) => {
+    try {
+      const url = `/api/schedule/engineering/${encodeURIComponent(docId)}/download`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Error al descargar el archivo");
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename || "plano.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al descargar el archivo";
+      toast.error(msg);
+    }
+  },
+
+  downloadEngineeringDocuments: async (docIds) => {
+    const current = get().schedule;
+    if (!current || docIds.length === 0) return;
+    const docsToDownload = current.documents.filter((d) => docIds.includes(d.id));
+    if (docsToDownload.length === 0) return;
+
+    toast.info(`Iniciando descarga de ${docsToDownload.length} archivo(s)...`);
+    for (let i = 0; i < docsToDownload.length; i++) {
+      const doc = docsToDownload[i];
+      await get().downloadEngineeringDocument(doc.id, doc.filename);
+      if (i < docsToDownload.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+    toast.success(`Descarga de ${docsToDownload.length} plano(s) finalizada`);
+  },
+
+  deleteEngineeringDocument: async (docId) => {
+    const current = get().schedule;
+    if (!current) return;
+    set({ saving: true, error: null });
+    try {
+      const res = await fetch(`/api/schedule/engineering/${encodeURIComponent(docId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("No se pudo eliminar el plano");
+      const nextDocs = (current.documents || []).filter((d) => d.id !== docId);
+      set({
+        schedule: {
+          ...current,
+          documents: nextDocs,
+        },
+      });
+      toast.success("Plano eliminado");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al eliminar plano";
+      set({ error: msg });
+      toast.error(msg);
+    } finally {
+      set({ saving: false });
+    }
+  },
+
+  deleteEngineeringDocuments: async (docIds) => {
+    const current = get().schedule;
+    if (!current || docIds.length === 0) return;
+    set({ saving: true, error: null });
+    try {
+      let deletedCount = 0;
+      for (const id of docIds) {
+        const res = await fetch(`/api/schedule/engineering/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        if (res.ok) deletedCount++;
+      }
+      const nextDocs = (current.documents || []).filter((d) => !docIds.includes(d.id));
+      set({
+        schedule: {
+          ...current,
+          documents: nextDocs,
+        },
+      });
+      toast.success(`${deletedCount} plano(s) eliminado(s)`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al eliminar planos";
+      set({ error: msg });
+      toast.error(msg);
+    } finally {
+      set({ saving: false });
+    }
+  },
 
   createBlocker: async (data) => {
     const current = get().schedule;
