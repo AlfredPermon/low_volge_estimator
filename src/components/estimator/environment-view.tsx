@@ -9,10 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Leaf, ChevronRight, CheckCircle2, ChevronLeft, Loader2, Printer, ArrowRight, Search, Building2, User } from 'lucide-react';
+import { Leaf, ChevronRight, CheckCircle2, ChevronLeft, Loader2, Printer, ArrowRight, Search, Building2, User, Mail } from 'lucide-react';
 import { useEstimateStore } from '@/store/estimate-store';
 import { toast } from 'sonner';
 import { exportEnvironmentReportToPDF, EnvironmentPdfItem, EnvironmentPdfMetadata } from '@/lib/pdf-export';
+import EmailEnvironmentDialog from '@/components/estimator/email-environment-dialog';
+import type { EnvironmentExportData } from '@/lib/environment-export';
 
 // --- Constantes del Mockup ---
 const REGIONES = [
@@ -73,6 +75,7 @@ export default function EnvironmentView() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
   // 1. Cargar el catálogo
   useEffect(() => {
@@ -166,6 +169,40 @@ export default function EnvironmentView() {
     });
     return Object.entries(sums).map(([cat, v]) => ({ cat, v })).sort((a,b) => b.v - a.v);
   }, [catalog, selectedItems, calculateItemAmount]);
+
+  const environmentExportData: EnvironmentExportData = useMemo(() => {
+    const selectedItemsList = catalog
+      .filter((item) => selectedItems.has(item.id))
+      .map((item) => {
+        const isHumanRes = item.description.toLowerCase().includes('recurso humano');
+        return {
+          id: item.id,
+          description: item.description,
+          category: item.category || item.system,
+          unit: item.unit,
+          quantity: quantities[item.id] || 1,
+          unitCost: item.unitCost,
+          totalAmount: calculateItemAmount(item),
+          isHumanRes,
+          months,
+        };
+      });
+
+    return {
+      projectName: store.projectName || 'Sin Proyecto',
+      clientName: store.clientName || 'Sin Cliente',
+      responsible: store.envResponsable || store.responsible || 'Coordinador SSMA',
+      responsibleEmail: store.envResponsableEmail || '',
+      regionName: REGIONES.find((r) => r.id === region)?.n || 'Noreste',
+      stageName: stage,
+      projectType,
+      durationMonths: months,
+      humanResMonths: months + 2,
+      totalAmount,
+      items: selectedItemsList,
+      summaryByCategory,
+    };
+  }, [catalog, selectedItems, quantities, calculateItemAmount, store, region, stage, projectType, months, totalAmount, summaryByCategory]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val);
@@ -607,8 +644,11 @@ export default function EnvironmentView() {
               <Button variant="outline" className="gap-2 text-stone-600 border-stone-300" onClick={handleExportPDF}>
                 <Printer className="w-4 h-4" /> Exportar PDF
               </Button>
-              <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => toast.success('Módulo en construcción: Integración con presupuesto general pendiente.')}>
-                Enviar a presupuesto <ArrowRight className="w-4 h-4" />
+              <Button
+                className="gap-2 bg-[#0e7c66] hover:bg-[#0a6352] text-white font-bold shadow-md shadow-emerald-900/20 px-5"
+                onClick={() => setIsEmailDialogOpen(true)}
+              >
+                <Mail className="w-4 h-4" /> E-Mail
               </Button>
             </div>
           </div>
@@ -633,6 +673,13 @@ export default function EnvironmentView() {
             </Button>
           </div>
         )}
+
+        {/* Modal E-Mail Medio Ambiente (SSMA) */}
+        <EmailEnvironmentDialog
+          open={isEmailDialogOpen}
+          onOpenChange={setIsEmailDialogOpen}
+          data={environmentExportData}
+        />
       </div>
     </div>
   );

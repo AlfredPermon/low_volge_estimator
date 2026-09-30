@@ -980,7 +980,7 @@ export function exportEnvironmentReportToPDF(
   let y = margin;
 
   // ─── Header Principal
-  doc.setFillColor(5, 150, 105); // Verde Emerald-600 (#059669)
+  doc.setFillColor(14, 124, 102); // Verde Esmeralda Corporativo (#0E7C66)
   doc.rect(0, 0, pageW, 22, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -1027,11 +1027,11 @@ export function exportEnvironmentReportToPDF(
   const COL_IMPORTE  = rightX;          // right edge
 
   const drawTableHeader = (yPos: number): number => {
-    doc.setFillColor(209, 250, 229); // Verde muy tenue (Emerald 100)
+    doc.setFillColor(14, 124, 102); // Verde Esmeralda (#0E7C66)
     doc.rect(margin, yPos - 4, pageW - margin * 2, 6, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.setTextColor(40, 40, 40);
+    doc.setTextColor(255, 255, 255);
     doc.text("No.",           COL_PARTIDA, yPos);
     doc.text("Artículo",      COL_DESC,    yPos);
     doc.text("Categoría",     COL_CAT,     yPos);
