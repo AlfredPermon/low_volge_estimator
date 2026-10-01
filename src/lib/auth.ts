@@ -216,11 +216,14 @@ export async function getSessionUser(req?: NextRequest | Request): Promise<Authe
 const ROLE_HIERARCHY: Record<string, number> = {
   admin: 4,
   ADMINISTRADOR: 4,
+  'Project Manager': 3,
+  'Proyect Manager': 3,
   'Seguridad electrónica': 3,
   SUPERVISOR: 3,
   'Seguridad Industrial': 2,
   OPERATIVO: 2,
   'Medio Ambiente': 1,
+  Consultor: 1,
   LECTURA: 1,
 };
 

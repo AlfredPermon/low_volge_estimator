@@ -3,9 +3,12 @@ export const SESSION_MAX_AGE_DAYS = 7;
 
 export type UserRole =
   | 'admin'
+  | 'Project Manager'
+  | 'Proyect Manager'
   | 'Seguridad electrónica'
   | 'Seguridad Industrial'
   | 'Medio Ambiente'
+  | 'Consultor'
   | 'ADMINISTRADOR'
   | 'SUPERVISOR'
   | 'OPERATIVO'

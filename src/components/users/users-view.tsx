@@ -53,9 +53,11 @@ interface UserStats {
 
 const ROLES_LIST = [
   { value: 'admin', label: 'Admin (Control Total)' },
+  { value: 'Project Manager', label: 'Project Manager' },
   { value: 'Seguridad electrónica', label: 'Seguridad Electrónica' },
   { value: 'Seguridad Industrial', label: 'Seguridad Industrial' },
   { value: 'Medio Ambiente', label: 'Medio Ambiente' },
+  { value: 'Consultor', label: 'Consultor' },
 ];
 
 export default function UsersView() {
@@ -265,6 +267,9 @@ export default function UsersView() {
     if (r === 'admin' || r === 'administrador') {
       return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold gap-1"><ShieldCheck className="w-3 h-3" /> Admin</Badge>;
     }
+    if (r === 'project manager' || r === 'proyect manager') {
+      return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 font-medium">Project Manager</Badge>;
+    }
     if (r === 'seguridad electrónica' || r === 'electronica') {
       return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 font-medium">Seguridad Electrónica</Badge>;
     }
@@ -273,6 +278,9 @@ export default function UsersView() {
     }
     if (r === 'medio ambiente' || r === 'ambiente') {
       return <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-300 font-medium">Medio Ambiente</Badge>;
+    }
+    if (r === 'consultor') {
+      return <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-300 font-medium">Consultor</Badge>;
     }
     return <Badge variant="secondary" className="text-stone-600">{role}</Badge>;
   };
@@ -383,9 +391,11 @@ export default function UsersView() {
                 <SelectContent>
                   <SelectItem value="all">Todos los perfiles</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="Project Manager">Project Manager</SelectItem>
                   <SelectItem value="Seguridad electrónica">Seguridad Electrónica</SelectItem>
                   <SelectItem value="Seguridad Industrial">Seguridad Industrial</SelectItem>
                   <SelectItem value="Medio Ambiente">Medio Ambiente</SelectItem>
+                  <SelectItem value="Consultor">Consultor</SelectItem>
                 </SelectContent>
               </Select>
             </div>

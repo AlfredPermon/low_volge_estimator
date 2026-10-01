@@ -8,7 +8,15 @@ const updateUserSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
   email: z.string().email('Correo electrónico no válido').optional(),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional().or(z.literal('')),
-  role: z.enum(['admin', 'Seguridad electrónica', 'Seguridad Industrial', 'Medio Ambiente']).optional(),
+  role: z.enum([
+    'admin',
+    'Project Manager',
+    'Proyect Manager',
+    'Seguridad electrónica',
+    'Seguridad Industrial',
+    'Medio Ambiente',
+    'Consultor',
+  ]).optional(),
   active: z.boolean().optional(),
 });
 

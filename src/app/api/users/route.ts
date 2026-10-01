@@ -8,7 +8,15 @@ const createUserSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Correo electrónico no válido'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-  role: z.enum(['admin', 'Seguridad electrónica', 'Seguridad Industrial', 'Medio Ambiente']),
+  role: z.enum([
+    'admin',
+    'Project Manager',
+    'Proyect Manager',
+    'Seguridad electrónica',
+    'Seguridad Industrial',
+    'Medio Ambiente',
+    'Consultor',
+  ]),
   active: z.boolean().default(true),
 });
 
@@ -47,7 +55,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (roleFilter !== 'all') {
-      whereCondition.role = roleFilter;
+      if (roleFilter === 'Project Manager' || roleFilter === 'Proyect Manager') {
+        whereCondition.OR = [
+          { role: 'Project Manager' },
+          { role: 'Proyect Manager' },
+        ];
+      } else {
+        whereCondition.role = roleFilter;
+      }
     }
 
     if (statusFilter === 'active') {
