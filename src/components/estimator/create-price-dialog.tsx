@@ -102,6 +102,12 @@ export default function CreatePriceDialog({
   const [newDeviceTypeValue, setNewDeviceTypeValue] = useState("");
   const [isEditingDeviceType, setIsEditingDeviceType] = useState(false);
   const [editDeviceTypeValue, setEditDeviceTypeValue] = useState("");
+
+  const [customUnits, setCustomUnits] = useState<string[]>([]);
+  const [isAddingUnit, setIsAddingUnit] = useState(false);
+  const [newUnitValue, setNewUnitValue] = useState("");
+  const [isEditingUnit, setIsEditingUnit] = useState(false);
+  const [editUnitValue, setEditUnitValue] = useState("");
   // Ref para evitar escritura de SKU sugerido si el usuario ya modificó el campo
   const userModifiedSkuRef = useRef(false);
 
@@ -135,9 +141,11 @@ export default function CreatePriceDialog({
             const sys = data.filter((d) => d.type === "system").map((d) => d.value);
             const cat = data.filter((d) => d.type === "category").map((d) => d.value);
             const dev = data.filter((d) => d.type === "deviceType").map((d) => d.value);
+            const un = data.filter((d) => d.type === "unit").map((d) => d.value);
             if (sys.length) setCustomSystems((prev) => Array.from(new Set([...prev, ...sys])));
             if (cat.length) setCustomCategories((prev) => Array.from(new Set([...prev, ...cat])));
             if (dev.length) setCustomDeviceTypes((prev) => Array.from(new Set([...prev, ...dev])));
+            if (un.length) setCustomUnits((prev) => Array.from(new Set([...prev, ...un])));
           }
         })
         .catch(console.error);
@@ -184,6 +192,9 @@ export default function CreatePriceDialog({
     setIsAddingDeviceType(false);
     setNewDeviceTypeValue("");
     setIsEditingDeviceType(false);
+    setIsAddingUnit(false);
+    setNewUnitValue("");
+    setIsEditingUnit(false);
   };
 
   const handleClose = () => {
@@ -649,25 +660,137 @@ export default function CreatePriceDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="new-unit" className="text-xs font-medium">
-                Unidad
-              </Label>
-              <Select
-                value={form.unit}
-                onValueChange={(v) => setForm((f) => ({ ...f, unit: v }))}
-                disabled={submitting}
-              >
-                <SelectTrigger id="new-unit" className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIT_OPTIONS.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
+              <div className="flex justify-between items-center">
+                <Label htmlFor="new-unit" className="text-xs font-medium">
+                  Unidad
+                </Label>
+                {customUnits.includes(form.unit) && !isAddingUnit && !isEditingUnit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditUnitValue(form.unit);
+                      setIsEditingUnit(true);
+                    }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <Pencil className="h-3 w-3 mr-1" /> Editar
+                  </button>
+                )}
+              </div>
+              {isEditingUnit ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={editUnitValue}
+                    onChange={(e) => setEditUnitValue(e.target.value)}
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = editUnitValue.trim().toUpperCase();
+                      if (val && val !== form.unit) {
+                        const oldVal = form.unit;
+                        setCustomUnits((prev) => Array.from(new Set([...prev.filter(u => u !== oldVal), val])));
+                        setForm((f) => ({ ...f, unit: val }));
+                        editCustomField("unit", oldVal, val);
+                      }
+                      setIsEditingUnit(false);
+                    }}
+                    className="h-9 px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Guardar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => setIsEditingUnit(false)}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : isAddingUnit ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    value={newUnitValue}
+                    onChange={(e) => setNewUnitValue(e.target.value)}
+                    placeholder="Nueva unidad"
+                    className="h-9 flex-1"
+                    autoFocus
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      const val = newUnitValue.trim().toUpperCase();
+                      if (val) {
+                        setCustomUnits((prev) => Array.from(new Set([...prev, val])));
+                        setForm((f) => ({ ...f, unit: val }));
+                        saveCustomField("unit", val);
+                      } else {
+                        if (!form.unit) setForm((f) => ({ ...f, unit: "PZA" }));
+                      }
+                      setIsAddingUnit(false);
+                      setNewUnitValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    OK
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={submitting}
+                    onClick={() => {
+                      if (!form.unit) setForm((f) => ({ ...f, unit: "PZA" }));
+                      setIsAddingUnit(false);
+                      setNewUnitValue("");
+                    }}
+                    className="h-9 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.unit}
+                  onValueChange={(v) => {
+                    if (v === "custom_add") {
+                      setIsAddingUnit(true);
+                      setForm((f) => ({ ...f, unit: "" }));
+                    } else {
+                      setForm((f) => ({ ...f, unit: v }));
+                    }
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="new-unit" className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set([...UNIT_OPTIONS, ...customUnits])).map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom_add" className="text-emerald-600 font-medium cursor-pointer mt-1 border-t rounded-none">
+                      <div className="flex items-center">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Agregar nueva...
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-1.5">

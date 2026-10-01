@@ -97,10 +97,10 @@ export default function EditPriceDialog({
     createdAt: string;
   }>>([]);
 
-  // Estados para custom fields
   const [customSystems, setCustomSystems] = useState<string[]>([]);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [customDeviceTypes, setCustomDeviceTypes] = useState<string[]>([]);
+  const [customUnits, setCustomUnits] = useState<string[]>([]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>("");
@@ -168,9 +168,11 @@ export default function EditPriceDialog({
             const sys = data.filter((d) => d.type === "system").map((d) => d.value);
             const cat = data.filter((d) => d.type === "category").map((d) => d.value);
             const dev = data.filter((d) => d.type === "deviceType").map((d) => d.value);
+            const un = data.filter((d) => d.type === "unit").map((d) => d.value);
             if (sys.length) setCustomSystems(sys);
             if (cat.length) setCustomCategories(cat);
             if (dev.length) setCustomDeviceTypes(dev);
+            if (un.length) setCustomUnits(un);
           }
         })
         .catch(console.error);
@@ -505,7 +507,7 @@ export default function EditPriceDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {UNIT_OPTIONS.map((u) => (
+                    {Array.from(new Set([...UNIT_OPTIONS, ...customUnits, draft.unit.toUpperCase()])).map((u) => (
                       <SelectItem key={u} value={u}>
                         {u}
                       </SelectItem>
