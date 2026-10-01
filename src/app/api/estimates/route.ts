@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureDatabaseSchema } from "@/lib/db";
-import { getSessionUser, hasPermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { z } from "zod";
 
 const createEstimateSchema = z.object({
@@ -42,19 +42,14 @@ const createEstimateSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    // Administradores y supervisores ven todos los presupuestos; otros ven los suyos y los no asignados
-    const isGlobalView = hasPermission(user.role, 'SUPERVISOR');
-    const whereCondition = isGlobalView
-      ? {}
-      : { OR: [{ userId: user.id }, { userId: null }] };
+    const guard = await requirePermission(request, 'PRESUPUESTO', 'READ');
+    if (guard instanceof NextResponse) return guard;
 
+    // Los presupuestos son recursos compartidos de la empresa.
+    // Todo usuario con acceso a PRESUPUESTO ve todos los proyectos,
+    // independientemente del perfil. El aislamiento por usuario fue removido.
     const estimates = await db.estimate.findMany({
-      where: whereCondition,
       orderBy: { updatedAt: "desc" },
     });
 
@@ -70,14 +65,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    if (!hasPermission(user.role, 'OPERATIVO')) {
-      return NextResponse.json({ error: "No tienes permisos para crear presupuestos" }, { status: 403 });
-    }
+    const guard = await requirePermission(request, 'PRESUPUESTO', 'WRITE');
+    if (guard instanceof NextResponse) return guard;
+    const { user } = guard;
 
     const body = await request.json();
     const parsed = createEstimateSchema.safeParse(body);

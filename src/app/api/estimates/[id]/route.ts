@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureDatabaseSchema } from "@/lib/db";
-import { getSessionUser, hasPermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { z } from "zod";
 import { runCalculation } from "@/lib/calculator";
 
@@ -166,10 +166,10 @@ async function recalcEstimate(estimateId: string) {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+
+    const guard = await requirePermission(request, 'PRESUPUESTO', 'READ');
+    if (guard instanceof NextResponse) return guard;
+    const { user } = guard;
 
     const { id } = await params;
     const estimate = await db.estimate.findUnique({ where: { id } });
@@ -178,12 +178,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    // Validar aislamiento de datos
-    const isGlobal = hasPermission(user.role, 'SUPERVISOR');
-    const ownerId = (estimate as Record<string, unknown>).userId as string | undefined;
-    if (!isGlobal && ownerId && ownerId !== user.id) {
-      return NextResponse.json({ error: "No tienes permiso para ver este presupuesto" }, { status: 403 });
-    }
+    // Los presupuestos son globales para la empresa, no hay aislamiento por usuario
+    // Todo usuario con permiso de READ puede ver el presupuesto.
 
     const response = {
       ...estimate,
@@ -207,14 +203,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    if (!hasPermission(user.role, 'OPERATIVO')) {
-      return NextResponse.json({ error: "No tienes permisos de edición" }, { status: 403 });
-    }
+    const guard = await requirePermission(request, 'PRESUPUESTO', 'WRITE');
+    if (guard instanceof NextResponse) return guard;
+    const { user } = guard;
 
     const { id } = await params;
     const existing = await db.estimate.findUnique({ where: { id } });
@@ -223,11 +215,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    const isGlobal = hasPermission(user.role, 'SUPERVISOR');
-    const existingOwnerId = (existing as Record<string, unknown>).userId as string | undefined;
-    if (!isGlobal && existingOwnerId && existingOwnerId !== user.id) {
-      return NextResponse.json({ error: "No tienes permiso para modificar este presupuesto" }, { status: 403 });
-    }
+    // Los presupuestos son globales para la empresa, no hay aislamiento por usuario
+    // Todo usuario con permiso de WRITE puede editar el presupuesto.
 
     const body = await request.json();
     const parsed = updateEstimateSchema.safeParse(body);
@@ -378,10 +367,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+
+    const guard = await requirePermission(request, 'PRESUPUESTO', 'WRITE');
+    if (guard instanceof NextResponse) return guard;
+    const { user } = guard;
 
     const { id } = await params;
     const existing = await db.estimate.findUnique({ where: { id } });
@@ -389,11 +378,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    const isGlobal = hasPermission(user.role, 'SUPERVISOR');
-    const existingOwnerId = (existing as Record<string, unknown>).userId as string | undefined;
-    if (!isGlobal && existingOwnerId && existingOwnerId !== user.id) {
-      return NextResponse.json({ error: "No tienes permiso para eliminar este presupuesto" }, { status: 403 });
-    }
+    // Los presupuestos son globales para la empresa.
+    // OJO: idealmente DELETE debería requerir permiso ADMIN, pero mantenemos
+    // la lógica base y removemos la validación de ownerId para seguir con el
+    // requerimiento de visibilidad global.
 
     await db.estimate.delete({ where: { id } });
     return NextResponse.json({ success: true });

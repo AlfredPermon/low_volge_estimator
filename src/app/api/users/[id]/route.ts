@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureDatabaseSchema } from '@/lib/db';
-import { getSessionUser, isAdminRole, hashPasswordAsync } from '@/lib/auth';
+import { requirePermission, isAdminRole } from '@/lib/auth';
+import { hashPassword } from 'better-auth/crypto';
 import { z } from 'zod';
 
 const updateUserSchema = z.object({
@@ -11,8 +12,7 @@ const updateUserSchema = z.object({
   role: z.enum([
     'admin',
     'Project Manager',
-    'Proyect Manager',
-    'Seguridad electrónica',
+    'Seguridad Electrónica',
     'Seguridad Industrial',
     'Medio Ambiente',
     'Consultor',
@@ -27,15 +27,9 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await ensureDatabaseSchema();
-    const currentUser = await getSessionUser(request);
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'No autorizado. Se requiere iniciar sesión.' }, { status: 401 });
-    }
-
-    if (!isAdminRole(currentUser.role)) {
-      return NextResponse.json({ error: 'Acceso denegado.' }, { status: 403 });
-    }
+    const guard = await requirePermission(request, 'USUARIOS', 'ADMIN');
+    if (guard instanceof NextResponse) return guard;
 
     const { id } = await params;
     const user = await prisma.user.findUnique({
@@ -67,15 +61,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     await ensureDatabaseSchema();
-    const currentUser = await getSessionUser(request);
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'No autorizado. Se requiere iniciar sesión.' }, { status: 401 });
-    }
-
-    if (!isAdminRole(currentUser.role)) {
-      return NextResponse.json({ error: 'Acceso denegado.' }, { status: 403 });
-    }
+    const guard = await requirePermission(request, 'USUARIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+    const { user: currentUser } = guard;
 
     const { id } = await params;
     const existingUser = await prisma.user.findUnique({ where: { id } });
@@ -128,8 +117,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (role !== undefined) updateData.role = role;
     if (active !== undefined) updateData.active = active;
 
+    // ── Cambio de contraseña: hashPassword de Better Auth es compatible con signIn.email() ──
     if (password && password.trim().length > 0) {
-      updateData.passwordHash = await hashPasswordAsync(password.trim());
+      const hashedPw = await hashPassword(password.trim());
+      // Actualizar en la tabla Account (donde BA guarda credenciales)
+      await prisma.account.updateMany({
+        where: { userId: id, providerId: 'credential' },
+        data: { password: hashedPw },
+      });
     }
 
     const updatedUser = await prisma.user.update({
@@ -158,15 +153,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     await ensureDatabaseSchema();
-    const currentUser = await getSessionUser(request);
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
-    }
-
-    if (!isAdminRole(currentUser.role)) {
-      return NextResponse.json({ error: 'Acceso denegado.' }, { status: 403 });
-    }
+    const guard = await requirePermission(request, 'USUARIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+    const { user: currentUser } = guard;
 
     const { id } = await params;
 

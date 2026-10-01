@@ -9,6 +9,7 @@ import {
   normalizeCategoryName,
   normalizeUnitName,
 } from "@/lib/import-normalizer";
+import { requirePermission } from "@/lib/auth";
 
 // ─── Zod Schema for Row Validation ───────────────────────────────────────────
 // El esquema se define dinámicamente dentro de POST para incluir custom fields
@@ -61,6 +62,10 @@ function looksLikeRefError(value: unknown): boolean {
 export async function POST(request: NextRequest) {
   const start = Date.now();
   try {
+    // ── Guard: solo Admin puede importar masivamente ─────────────────────────
+    const guard = await requirePermission(request, 'PRECIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     // ── Cargar CustomFields ──────────────────────────────────────────────────
     const customFields = await db.customField.findMany();
     const customSystems = customFields.filter((c: any) => c.type === "system").map((c: any) => c.value);

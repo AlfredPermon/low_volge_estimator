@@ -61,6 +61,7 @@ import {
 import { toast } from 'sonner';
 import UsersView from '@/components/users/users-view';
 import { isAdminRole } from '@/lib/auth-constants';
+import { canRead, type AppModule } from '@/lib/permissions';
 import NotificationsCenter from '@/components/notifications/notifications-center';
 import TeamsNotificationDialog from '@/components/estimator/teams-notification-dialog';
 import { useNotificationStore } from '@/store/notification-store';
@@ -89,15 +90,15 @@ type EstimateDateFilter = 'all' | '7d' | '30d' | '90d';
 
 const RECENT_ESTIMATES_KEY = 'lve.recentEstimates.v1';
 
-const WIZARD_STEPS = [
-  { id: 'project', label: 'Proyecto' },
-  { id: 'cctv', label: 'CCTV' },
-  { id: 'access', label: 'Acceso' },
-  { id: 'paging', label: 'Voceo' },
-  { id: 'fire', label: 'Incendio' },
-  { id: 'factors', label: 'Factores' },
-  { id: 'labor', label: 'Mano de Obra' },
-  { id: 'validation', label: 'Validaciones' },
+const WIZARD_STEPS_CONFIG: Array<{ id: string; label: string; module: AppModule }> = [
+  { id: 'project', label: 'Proyecto', module: 'PROYECTO' },
+  { id: 'cctv', label: 'CCTV', module: 'CCTV' },
+  { id: 'access', label: 'Acceso', module: 'ACCESO' },
+  { id: 'paging', label: 'Voceo', module: 'VOCEO' },
+  { id: 'fire', label: 'Incendio', module: 'INCENDIO' },
+  { id: 'factors', label: 'Factores', module: 'FACTORES' },
+  { id: 'labor', label: 'Mano de Obra', module: 'MANO_DE_OBRA' },
+  { id: 'validation', label: 'Validaciones', module: 'VALIDACIONES' },
 ];
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -117,6 +118,12 @@ export default function Home() {
   const [recentDate, setRecentDate] = useState<EstimateDateFilter>('all');
   const [teamsDialogOpen, setTeamsDialogOpen] = useState(false);
   const addNotification = useNotificationStore((state) => state.addNotification);
+
+  // Filtrar los pasos del wizard según los permisos del usuario
+  const WIZARD_STEPS = useMemo(() => {
+    if (!currentUser) return WIZARD_STEPS_CONFIG;
+    return WIZARD_STEPS_CONFIG.filter((step) => canRead(currentUser.role, step.module));
+  }, [currentUser]);
 
   const handleSelectParametricDate = (dateStr: string) => {
     store.setParametricDeliveryDate(dateStr);
@@ -1220,74 +1227,92 @@ export default function Home() {
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
             {!store.isCanvasFullscreen && (
               <TabsList className="bg-transparent h-12 p-0 gap-1 w-full justify-start overflow-x-auto custom-scrollbar flex-nowrap shrink-0">
-              <TabsTrigger
-                value="config"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <Settings2 className="w-4 h-4" />
-                Configuración
-              </TabsTrigger>
-              <TabsTrigger
-                value="prices"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <Database className="w-4 h-4" />
-                Precios
-              </TabsTrigger>
-              <TabsTrigger
-                value="budget"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <FileText className="w-4 h-4" />
-                Presupuesto
-                {store.result && store.result.grandTotal > 0 && (
-                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs ml-1">
-                    {fmt(store.result.grandTotal)}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger
-                value="floorplan"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <MapPin className="w-4 h-4 text-emerald-600" />
-                Plano Espacial
-              </TabsTrigger>
-              <TabsTrigger
-                value="environment"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <Leaf className="w-4 h-4 text-emerald-600" />
-                Medio Ambiente
-              </TabsTrigger>
-              <TabsTrigger
-                value="schedule"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <CalendarDays className="w-4 h-4" />
-                Cronograma
-              </TabsTrigger>
-              <TabsTrigger
-                value="reports"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <BarChart3 className="w-4 h-4" />
-                Reportes
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
-              >
-                <PieChart className="w-4 h-4" />
-                Análisis
-              </TabsTrigger>
-              <TabsTrigger
-                value="vivotek"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700 shrink-0"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                Reg. VIVOTEK
-              </TabsTrigger>
+              {(!currentUser || canRead(currentUser.role, 'CONFIGURACION')) && (
+                <TabsTrigger
+                  value="config"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <Settings2 className="w-4 h-4" />
+                  Configuración
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'PRECIOS')) && (
+                <TabsTrigger
+                  value="prices"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <Database className="w-4 h-4" />
+                  Precios
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'PRESUPUESTO')) && (
+                <TabsTrigger
+                  value="budget"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <FileText className="w-4 h-4" />
+                  Presupuesto
+                  {store.result && store.result.grandTotal > 0 && (
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs ml-1">
+                      {fmt(store.result.grandTotal)}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'PLANO_ESPACIAL')) && (
+                <TabsTrigger
+                  value="floorplan"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                  Plano Espacial
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'MEDIO_AMBIENTE')) && (
+                <TabsTrigger
+                  value="environment"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <Leaf className="w-4 h-4 text-emerald-600" />
+                  Medio Ambiente
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'CRONOGRAMA')) && (
+                <TabsTrigger
+                  value="schedule"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  Cronograma
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'REPORTES')) && (
+                <TabsTrigger
+                  value="reports"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Reportes
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'ANALISIS')) && (
+                <TabsTrigger
+                  value="analytics"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700"
+                >
+                  <PieChart className="w-4 h-4" />
+                  Análisis
+                </TabsTrigger>
+              )}
+              {(!currentUser || canRead(currentUser.role, 'REG_VIVOTEK')) && (
+                <TabsTrigger
+                  value="vivotek"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:shadow-none px-4 h-12 text-sm font-medium gap-2 text-stone-600 data-[state=active]:text-emerald-700 shrink-0"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  Reg. VIVOTEK
+                </TabsTrigger>
+              )}
               {currentUser && isAdminRole(currentUser.role) && (
                 <TabsTrigger
                   value="users"
@@ -1340,14 +1365,14 @@ export default function Home() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-6">
-                        {wizardStep === 0 && renderProjectInfoForm()}
-                        {wizardStep === 1 && <CctvForm />}
-                        {wizardStep === 2 && <AccessForm />}
-                        {wizardStep === 3 && <PagingForm />}
-                        {wizardStep === 4 && <FireForm />}
-                        {wizardStep === 5 && <FactorsPanel />}
-                        {wizardStep === 6 && <LaborPanel />}
-                        {wizardStep === 7 && <ValidationPanel />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'project' && renderProjectInfoForm()}
+                        {WIZARD_STEPS[wizardStep]?.id === 'cctv' && <CctvForm />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'access' && <AccessForm />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'paging' && <PagingForm />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'fire' && <FireForm />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'factors' && <FactorsPanel />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'labor' && <LaborPanel />}
+                        {WIZARD_STEPS[wizardStep]?.id === 'validation' && <ValidationPanel />}
                       </CardContent>
                     </Card>
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureDatabaseSchema } from "@/lib/db";
-import { getSessionUser, hasPermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { z } from "zod";
 
 const createPriceItemSchema = z.object({
@@ -26,14 +26,14 @@ const createPriceItemSchema = z.object({
 });
 
 // ─── GET: List all price items with optional filters ────────────────────────
+// Requiere: PRECIOS → READ (todos los perfiles autenticados tienen al menos READ)
 
 export async function GET(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+
+    const guard = await requirePermission(request, 'PRECIOS', 'READ');
+    if (guard instanceof NextResponse) return guard;
 
     const { searchParams } = new URL(request.url);
     const system = searchParams.get("system");
@@ -81,18 +81,17 @@ export async function GET(request: NextRequest) {
 }
 
 // ─── POST: Create a single price item ──────────────────────────────────────
+// Requiere: PRECIOS → WRITE
+// Perfiles con WRITE: admin, Project Manager, Seguridad Electrónica, Seguridad Industrial, Medio Ambiente
+// Perfiles bloqueados: Consultor (READ only)
 
 export async function POST(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    if (!hasPermission(user.role, 'SUPERVISOR')) {
-      return NextResponse.json({ error: "Se requieren permisos de Supervisor o Administrador para crear precios en el catálogo" }, { status: 403 });
-    }
+    const guard = await requirePermission(request, 'PRECIOS', 'WRITE', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+    const { user } = guard;
 
     const body = await request.json();
     const parsed = createPriceItemSchema.safeParse(body);
@@ -119,21 +118,14 @@ export async function POST(request: NextRequest) {
 }
 
 // ─── DELETE: Bulk delete price items ──────────────────────────────────────
+// Requiere: PRECIOS → ADMIN (solo administrador puede eliminar masivamente)
 
 export async function DELETE(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    if (!hasPermission(user.role, 'SUPERVISOR')) {
-      return NextResponse.json(
-        { error: "Se requieren permisos de Supervisor o Administrador para eliminar precios" },
-        { status: 403 }
-      );
-    }
+    const guard = await requirePermission(request, 'PRECIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
 
     const body = await request.json();
     const { ids } = body ?? {};

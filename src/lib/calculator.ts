@@ -2052,23 +2052,7 @@ export function runCalculation(params: {
     }
   });
 
-  // Add general/service items from price items
-  const serviceItems = priceItems.filter(
-    (pi) => pi.system === "GENERAL" && pi.category === "Servicio" && pi.active
-  );
-  const generalLineItems: LineItem[] = [];
-  serviceItems.forEach((si, i) => {
-    generalLineItems.push(
-      makeLineItem(
-        i + 1, "5.7.0", "GENERAL", `SRV-${String(i + 1).padStart(3, "0")}`,
-        si.description, si.unit, 1, si.unitCost, "Servicio"
-      )
-    );
-  });
-  if (generalLineItems.length > 0) {
-    systems["GENERAL"] = { ...sumLineItems(generalLineItems), lineItems: generalLineItems };
-    allLineItems.push(...generalLineItems);
-  }
+
 
   const subtotalMaterials = r(allLineItems.filter((i) => i.category === "Equipo" || i.category === "Accesorio" || i.category === "Consumible").reduce((s, i) => s + i.totalAmount, 0));
   const subtotalLabor = r(allLineItems.filter((i) => i.category === "Mano de Obra").reduce((s, i) => s + i.totalAmount, 0));

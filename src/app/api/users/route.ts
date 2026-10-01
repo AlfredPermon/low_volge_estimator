@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureDatabaseSchema } from '@/lib/db';
-import { getSessionUser, isAdminRole, hashPasswordAsync } from '@/lib/auth';
+import { requirePermission, auth } from '@/lib/auth';
 import { z } from 'zod';
 
 const createUserSchema = z.object({
@@ -11,8 +11,7 @@ const createUserSchema = z.object({
   role: z.enum([
     'admin',
     'Project Manager',
-    'Proyect Manager',
-    'Seguridad electrónica',
+    'Seguridad Electrónica',
     'Seguridad Industrial',
     'Medio Ambiente',
     'Consultor',
@@ -25,18 +24,10 @@ const createUserSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const currentUser = await getSessionUser(request);
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'No autorizado. Se requiere iniciar sesión.' }, { status: 401 });
-    }
-
-    if (!isAdminRole(currentUser.role)) {
-      return NextResponse.json(
-        { error: "Acceso denegado. Únicamente el perfil 'admin' tiene permisos para acceder al módulo de gestión de usuarios." },
-        { status: 403 }
-      );
-    }
+    const guard = await requirePermission(request, 'USUARIOS', 'ADMIN');
+    if (guard instanceof NextResponse) return guard;
+    const { user: currentUser } = guard;
 
     const { searchParams } = new URL(request.url);
     const search = (searchParams.get('search') || '').trim();
@@ -116,22 +107,22 @@ export async function GET(request: NextRequest) {
 }
 
 // ─── POST: Create a new user (Exclusivo Admin) ──────────────────────────────
+//
+// IMPORTANTE: Usa auth.api.signUpEmail() de Better Auth para registrar la
+// contraseña en la tabla Account (el mismo mecanismo que usa authClient.signIn.email()
+// en el login). NO usar prisma.user.create() con passwordHash propio — ese campo
+// no es reconocido por el flujo de autenticación de Better Auth.
+//
+// Flujo:
+//   1. auth.api.signUpEmail() → crea User + Account con la contraseña hasheada por BA
+//   2. prisma.user.update()   → aplica el rol y estado active del nuevo perfil
 
 export async function POST(request: NextRequest) {
   try {
     await ensureDatabaseSchema();
-    const currentUser = await getSessionUser(request);
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'No autorizado. Se requiere iniciar sesión.' }, { status: 401 });
-    }
-
-    if (!isAdminRole(currentUser.role)) {
-      return NextResponse.json(
-        { error: "Acceso denegado. Únicamente el perfil 'admin' puede registrar nuevos usuarios." },
-        { status: 403 }
-      );
-    }
+    const guard = await requirePermission(request, 'USUARIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
 
     const body = await request.json();
     const parsed = createUserSchema.safeParse(body);
@@ -146,10 +137,8 @@ export async function POST(request: NextRequest) {
     const { name, email, password, role, active } = parsed.data;
     const cleanEmail = email.toLowerCase().trim();
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
-
+    // Verificar duplicado antes de llamar a Better Auth
+    const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existingUser) {
       return NextResponse.json(
         { error: 'El correo electrónico ya se encuentra registrado en el sistema' },
@@ -157,16 +146,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const passwordHash = await hashPasswordAsync(password);
+    // ── Registrar en Better Auth ─────────────────────────────────────────────
+    // Esto crea el registro User + Account con la contraseña hasheada de forma
+    // compatible con authClient.signIn.email() del frontend.
+    const signUpResult = await auth.api.signUpEmail({
+      body: { email: cleanEmail, password, name },
+    });
 
-    const newUser = await prisma.user.create({
-      data: {
-        name,
-        email: cleanEmail,
-        passwordHash,
-        role,
-        active,
-      },
+    if (!signUpResult?.user) {
+      return NextResponse.json(
+        { error: 'Error al registrar el usuario en el sistema de autenticación' },
+        { status: 500 }
+      );
+    }
+
+    // ── Aplicar rol y estado active al usuario recién creado ─────────────────
+    const updatedUser = await prisma.user.update({
+      where: { email: cleanEmail },
+      data: { role, active },
       select: {
         id: true,
         email: true,
@@ -178,9 +175,26 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(newUser, { status: 201 });
-  } catch (error) {
+    return NextResponse.json(updatedUser, { status: 201 });
+  } catch (error: any) {
     console.error('Error creating user:', error);
-    return NextResponse.json({ error: 'Error interno del servidor al crear el usuario' }, { status: 500 });
+
+    // Better Auth puede lanzar error si el email ya existe en su tabla Account
+    const msg: string = error?.message || '';
+    if (
+      msg.toLowerCase().includes('already exists') ||
+      msg.toLowerCase().includes('duplicate') ||
+      msg.toLowerCase().includes('unique')
+    ) {
+      return NextResponse.json(
+        { error: 'El correo electrónico ya se encuentra registrado en el sistema' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Error interno del servidor al crear el usuario' },
+      { status: 500 }
+    );
   }
 }

@@ -14,7 +14,7 @@ model User {
   name          String
   emailVerified Boolean   @default(false)
   image         String?
-  role          String    @default("OPERATIVO") // ADMINISTRADOR, SUPERVISOR, OPERATIVO, LECTURA
+  role          String    @default("Consultor") // admin | Project Manager | Seguridad Electrónica | Seguridad Industrial | Medio Ambiente | Consultor
   active        Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -332,4 +332,23 @@ model CustomField {
   createdAt DateTime @default(now())
 
   @@unique([type, value])
+}
+
+/// Auditoría de accesos — registra cada intento de acceso (permitido o denegado)
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String   // 'UNAUTHENTICATED' si no hay sesión
+  userEmail String
+  userRole  String   @default("")
+  module    String   // AppModule identifier (e.g. 'PRECIOS', 'USUARIOS')
+  action    String   // PermissionLevel requerido (READ | WRITE | ADMIN)
+  result    String   // 'ALLOWED' | 'DENIED'
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([module])
+  @@index([result])
+  @@index([createdAt])
 }
