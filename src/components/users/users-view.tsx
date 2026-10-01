@@ -29,6 +29,8 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -72,6 +74,8 @@ export default function UsersView() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Create form state
   const [createForm, setCreateForm] = useState({
@@ -188,6 +192,7 @@ export default function UsersView() {
       role: user.role,
       active: user.active,
     });
+    setShowEditPassword(false);
     setIsEditOpen(true);
   };
 
@@ -610,15 +615,32 @@ export default function UsersView() {
               <Label className="text-xs font-semibold text-stone-700 flex items-center gap-1">
                 <Lock className="w-3.5 h-3.5 text-emerald-600" /> Contraseña Inicial *
               </Label>
-              <Input
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={createForm.password}
-                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                required
-                minLength={6}
-                className="h-10 border-stone-200"
-              />
+              <div className="relative flex items-center">
+                <Input
+                  type={showCreatePassword ? 'text' : 'password'}
+                  placeholder="Mínimo 6 caracteres"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  required
+                  minLength={6}
+                  className="h-10 pr-10 border-stone-200 focus-visible:ring-emerald-500 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePassword(!showCreatePassword)}
+                  title={showCreatePassword ? 'Ocultar contraseña' : 'Mostrar contraseña en texto visible'}
+                  aria-label={showCreatePassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-stone-400 hover:text-emerald-600 hover:bg-emerald-100/60 rounded-md transition-all duration-200 group"
+                >
+                  <div className="transition-transform duration-300 transform group-hover:scale-110 group-active:scale-90 flex items-center justify-center">
+                    {showCreatePassword ? (
+                      <EyeOff className="w-4 h-4 text-emerald-600 animate-in fade-in zoom-in-75 duration-200" />
+                    ) : (
+                      <Eye className="w-4 h-4 animate-in fade-in zoom-in-75 duration-200" />
+                    )}
+                  </div>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -698,17 +720,48 @@ export default function UsersView() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-stone-700">
-                Cambiar Contraseña <span className="text-stone-400 font-normal">(Dejar en blanco para mantener la actual)</span>
-              </Label>
-              <Input
-                type="password"
-                placeholder="Nueva contraseña opcional"
-                value={editForm.password}
-                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                className="h-10 border-stone-200"
-              />
+            <div className="space-y-1.5 p-3 rounded-xl bg-stone-50/80 border border-stone-200/80">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                  Cambiar Contraseña
+                </Label>
+                <span className="text-[11px] text-stone-400 font-normal">
+                  (Dejar en blanco para mantener la actual)
+                </span>
+              </div>
+
+              <div className="relative flex items-center mt-1">
+                <Input
+                  type={showEditPassword ? 'text' : 'password'}
+                  placeholder="Ingresa la nueva contraseña (ej. Admin2026!#)"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  className="h-10 pr-10 border-stone-200 focus-visible:ring-emerald-500 font-mono text-sm bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword(!showEditPassword)}
+                  title={showEditPassword ? 'Ocultar contraseña (mostrar puntos)' : 'Mostrar contraseña (texto visible, números, caracteres)'}
+                  aria-label={showEditPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-stone-400 hover:text-emerald-600 hover:bg-emerald-100/60 rounded-md transition-all duration-200 group"
+                >
+                  <div className="transition-transform duration-300 transform group-hover:scale-110 group-active:scale-90 flex items-center justify-center">
+                    {showEditPassword ? (
+                      <EyeOff className="w-4 h-4 text-emerald-600 animate-in fade-in zoom-in-75 duration-200" />
+                    ) : (
+                      <Eye className="w-4 h-4 animate-in fade-in zoom-in-75 duration-200" />
+                    )}
+                  </div>
+                </button>
+              </div>
+
+              {showEditPassword && (
+                <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1 mt-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  Modo texto visible activado (letras, números y caracteres especiales visibles).
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
