@@ -236,6 +236,29 @@ export async function ensureDatabaseSchema() {
       }
     }
 
+    // 9. Sanitizar fechas con formato no ISO en Estimate para prevenir errores Prisma P2023
+    try {
+      const estimates = (await db.$queryRawUnsafe('SELECT id, createdAt, updatedAt FROM "Estimate"')) as Array<{ id: string; createdAt: any; updatedAt: any }>;
+      if (Array.isArray(estimates)) {
+        for (const est of estimates) {
+          if (typeof est.createdAt === 'string' && est.createdAt && !/^\d{4}-\d{2}-\d{2}/.test(est.createdAt)) {
+            const d = new Date(est.createdAt);
+            if (!isNaN(d.getTime())) {
+              await db.$executeRawUnsafe('UPDATE "Estimate" SET "createdAt" = ? WHERE "id" = ?', d.toISOString(), est.id);
+            }
+          }
+          if (typeof est.updatedAt === 'string' && est.updatedAt && !/^\d{4}-\d{2}-\d{2}/.test(est.updatedAt)) {
+            const d = new Date(est.updatedAt);
+            if (!isNaN(d.getTime())) {
+              await db.$executeRawUnsafe('UPDATE "Estimate" SET "updatedAt" = ? WHERE "id" = ?', d.toISOString(), est.id);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Fechas sanitization skip:', e);
+    }
+
   } catch (err) {
     console.error('Auto-migration error:', err);
   }
