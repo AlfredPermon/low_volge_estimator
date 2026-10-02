@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureDatabaseSchema } from '@/lib/db';
-import { verifyPasswordAsync, createSession, SESSION_COOKIE_NAME, SESSION_MAX_AGE_DAYS } from '@/lib/auth';
+import { verifyPasswordAsync, createSession, hashPasswordAsync, isLegacyPasswordHash, SESSION_COOKIE_NAME, SESSION_MAX_AGE_DAYS } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
@@ -59,6 +59,19 @@ export async function POST(request: NextRequest) {
         { error: 'Credenciales incorrectas o usuario desactivado' },
         { status: 401 }
       );
+    }
+
+    // ── Migración lazy de hashes legacy (salt:sha256 → PBKDF2) ──
+    if (isLegacyPasswordHash(user.passwordHash)) {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: await hashPasswordAsync(password) },
+        });
+      } catch (migrateErr) {
+        // No bloquear el login si la migración falla; se reintentará next login.
+        console.error('Error migrating legacy password hash:', migrateErr);
+      }
     }
 
     const token = await createSession(user.id);

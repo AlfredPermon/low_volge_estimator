@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/lib/auth";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { db } from "@/lib/db";
@@ -59,8 +60,12 @@ async function loadSeedFile(): Promise<SeedFile> {
   return data;
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    // V7: operación sensible (siembra masiva de catálogo) → solo ADMIN.
+    const guard = await requirePermission(request, 'PRECIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     const existing = await db.priceItem.count();
     if (existing > 0) {
       return NextResponse.json({
