@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth";
 
 /**
  * API para detectar y analizar registros duplicados en la base de datos de precios.
@@ -54,6 +55,8 @@ function getNormalizedField(item: DuplicateItem, field: 'sku' | 'model' | 'descr
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse<AnalysisResult | { error: string }>> {
+  const guard = await requirePermission(request, 'PRECIOS', 'READ');
+  if (guard instanceof NextResponse) return guard as any;
   try {
     const { searchParams } = new URL(request.url);
     const field = searchParams.get("field") as 'sku' | 'model' | 'description' | 'all' | null;

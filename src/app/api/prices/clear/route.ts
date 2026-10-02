@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { requirePermission } from '@/lib/auth';
 
-// ─── DELETE: Clear all price items ──────────────────────────────────────────
+// ─── POST: Clear all price items (solo ADMIN) ───────────────────────────────
 
-export async function DELETE() {
+export async function POST(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     // Eliminar todos los registros de PriceItem (y sus PriceHistory por cascade)
     const deletedCount = await db.priceItem.deleteMany({});
 

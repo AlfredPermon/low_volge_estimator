@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { safeExternalFetch, assertSafeOutboundUrl, SsrfError } from '@/lib/url-guard';
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,6 +53,22 @@ export async function POST(request: NextRequest) {
     if (!webhookUrl.startsWith('http://') && !webhookUrl.startsWith('https://')) {
       return NextResponse.json(
         { error: 'La URL de Webhook ingresada no es válida. Debe iniciar con http:// o https://' },
+        { status: 400 }
+      );
+    }
+
+    // ── Protección SSRF (V4): el destino es controlado por el usuario → se exige
+    // HTTPS público (se bloquean redes internas, link-local/IMDS, localhost y
+    // hostnames no resolubles). Ver src/lib/url-guard.ts.
+    try {
+      await assertSafeOutboundUrl(webhookUrl);
+    } catch (ssrfErr) {
+      console.warn(`Teams webhook bloqueado (SSRF): ${webhookUrl} — ${ssrfErr instanceof SsrfError ? ssrfErr.message : 'error'}`);
+      return NextResponse.json(
+        {
+          error:
+            'La URL de Webhook no es permitida. Debe ser HTTPS y pública (no se permiten direcciones internas, locales o reservadas).',
+        },
         { status: 400 }
       );
     }
@@ -248,11 +265,16 @@ export async function POST(request: NextRequest) {
 
     for (const fmt of formatsToTry) {
       try {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(fmt.payload),
-        });
+        // safeExternalFetch: timeout 5s, sin redirects automáticos, destino revalidado (SSRF)
+        const response = await safeExternalFetch(
+          webhookUrl,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fmt.payload),
+          },
+          5000
+        );
 
         if (response.ok) {
           return NextResponse.json({

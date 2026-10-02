@@ -12,6 +12,7 @@ import {
 } from './auth-constants';
 import { checkPermission, type AppModule, type PermissionLevel } from './permissions';
 import { logAudit, logUnauthorizedAttempt } from './audit';
+import { getAuthSecret, getAuthBaseURL, getMicrosoftProviderConfig } from './auth-config';
 
 // Re-exportar para compatibilidad con importaciones existentes
 export { SESSION_COOKIE_NAME, SESSION_MAX_AGE_DAYS, isAdminRole, normalizeRole, checkPermission };
@@ -31,25 +32,25 @@ export interface AuthenticatedUser {
 // ─── Instancia Better Auth ────────────────────────────────────────────────────
 
 /**
- * Instancia del Servidor Better Auth
+ * Instancia del Servidor Better Auth.
+ *
+ * ⚠️ Seguridad: el secreto proviene de getAuthSecret() — sin fallback hardcodeado.
+ * En producción la app falla al arrancar si BETTER_AUTH_SECRET falta o es débil.
+ * Microsoft OAuth solo se registra si hay credenciales reales configuradas.
  */
+const microsoftProvider = getMicrosoftProviderConfig();
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'sqlite',
   }),
-  secret: process.env.BETTER_AUTH_SECRET || 'lve-production-auth-secret-key-change-in-env',
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL || 'http://localhost:3000',
+  secret: getAuthSecret(),
+  baseURL: getAuthBaseURL(),
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
   },
-  socialProviders: {
-    microsoft: {
-      clientId: process.env.MICROSOFT_CLIENT_ID || 'placeholder_client_id',
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET || 'placeholder_client_secret',
-      tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
-    },
-  },
+  ...(microsoftProvider ? { socialProviders: { microsoft: microsoftProvider } } : {}),
   user: {
     additionalFields: {
       role: {
@@ -106,26 +107,75 @@ export async function computeSha256Hex(text: string): Promise<string> {
 }
 
 /**
- * Hash de contraseña asíncrono con sal para usuarios creados vía API
+ * Hash de contraseña asíncrono con sal para usuarios creados vía API.
+ *
+ * Formato: `pbkdf2$<iteraciones>$<saltHex>$<hashHex>` (PBKDF2-SHA256, 120k it).
+ * PBKDF2 es deliberadamente lento → resiste cracking offline ante filtración de BD.
+ * Los hashes legacy `salt:sha256hex` siguen verificándose (ver verifyPasswordAsync)
+ * y se migran de forma lazy al siguiente login exitoso.
  */
-export async function hashPasswordAsync(password: string, saltInput?: string): Promise<string> {
-  const salt = saltInput || getRandomHex(16);
-  const hash = await computeSha256Hex(password + salt);
-  return `${salt}:${hash}`;
+const PBKDF2_ITERATIONS = 120_000;
+const PBKDF2_KEYLEN = 32; // bytes
+
+async function pbkdf2Hex(password: string, saltHex: string, iterations: number): Promise<string> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const saltBytes = new Uint8Array(
+    saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16))
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: saltBytes as unknown as ArrayBuffer, iterations, hash: 'SHA-256' },
+    keyMaterial,
+    PBKDF2_KEYLEN * 8
+  );
+  return Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function hashPasswordAsync(password: string, _saltInput?: string): Promise<string> {
+  const salt = getRandomHex(16);
+  const hash = await pbkdf2Hex(password, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${salt}$${hash}`;
 }
 
 /**
- * Verificación de contraseña asíncrona
+ * Verificación de contraseña asíncrona.
+ * Soporta formato nuevo (PBKDF2) y legacy (`salt:sha256`) para no romper logins.
+ * Retorna true además si el hash verificado es legacy → el llamador puede
+ * re-hashear (migración lazy).
  */
 export async function verifyPasswordAsync(password: string, storedHash: string): Promise<boolean> {
   try {
+    if (storedHash.startsWith('pbkdf2$')) {
+      const [, iterStr, salt, expected] = storedHash.split('$');
+      const iterations = parseInt(iterStr, 10);
+      if (!salt || !expected || !Number.isFinite(iterations)) return false;
+      const computed = await pbkdf2Hex(password, salt, iterations);
+      return timingSafeEqualHex(computed, expected);
+    }
+
+    // Formato legacy: salt:sha256(password+salt) — solo lectura/compatibilidad
     const [salt, originalHash] = storedHash.split(':');
     if (!salt || !originalHash) return false;
     const computedHash = await computeSha256Hex(password + salt);
-    return computedHash === originalHash;
+    return timingSafeEqualHex(computedHash, originalHash);
   } catch {
     return false;
   }
+}
+
+/** true si el hash almacenado usa el algoritmo legacy débil (debe migrarse). */
+export function isLegacyPasswordHash(storedHash: string): boolean {
+  return !!storedHash && !storedHash.startsWith('pbkdf2$');
+}
+
+/** Comparación en tiempo constante de dos strings hex. */
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 
 // ─── Gestión de Sesión ────────────────────────────────────────────────────────

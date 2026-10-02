@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth";
 import { z } from "zod";
 import { recordPriceChange } from "@/lib/price-history";
 
@@ -34,8 +35,11 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 // ─── GET: Retrieve a single price item by id ───────────────────────────────
 
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'READ');
+    if (guard instanceof NextResponse) return guard;
+
     const { id } = await params;
     const item = await db.priceItem.findUnique({ where: { id } });
     if (!item) {
@@ -52,6 +56,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'WRITE', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     const { id } = await params;
     const body = await request.json();
     const parsed = updatePriceItemSchema.safeParse(body);
@@ -102,6 +109,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'ADMIN', { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     const { id } = await params;
     await db.priceItem.delete({ where: { id } });
     return NextResponse.json({ success: true });
