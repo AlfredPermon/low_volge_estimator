@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth";
 
 // ─── GET: List price items filtered by deviceType(s) ─────────────────────────
 // Used by CCTV form to dynamically load camera models and NVR servers
 
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'READ');
+    if (guard instanceof NextResponse) return guard;
     const { searchParams } = new URL(request.url);
     const deviceTypes = searchParams.get("deviceTypes"); // comma-separated: "cctv_camera_bullet,cctv_camera_domo"
 

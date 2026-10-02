@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth";
 
 /**
  * API para generar el siguiente SKU disponible para un sistema y categoría específicos.
@@ -46,6 +47,9 @@ function parseSkuSequence(sku: string): number | null {
 
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'READ');
+    if (guard instanceof NextResponse) return guard;
+
     const searchParams = request.nextUrl.searchParams;
     const system = searchParams.get("system");
     const category = searchParams.get("category");

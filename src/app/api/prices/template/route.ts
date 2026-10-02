@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/lib/auth";
 import * as XLSX from "xlsx";
 import { SYSTEMS, CATEGORIES, DEVICE_TYPES, DEVICE_TYPE_LABELS } from "@/lib/constants";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, 'PRECIOS', 'READ');
+    if (guard instanceof NextResponse) return guard;
     // Definimos los encabezados obligatorios que nuestro esquema de importación espera
     const headers = [
       "SKU",

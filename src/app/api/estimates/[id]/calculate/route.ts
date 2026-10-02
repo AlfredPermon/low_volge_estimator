@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/lib/auth";
 import { db, ensureDatabaseSchema } from "@/lib/db";
 import { runCalculation } from "@/lib/calculator";
 
