@@ -54,7 +54,7 @@ interface UserStats {
 const ROLES_LIST = [
   { value: 'admin', label: 'Admin (Control Total)' },
   { value: 'Project Manager', label: 'Project Manager' },
-  { value: 'Seguridad electrónica', label: 'Seguridad Electrónica' },
+  { value: 'Seguridad Electrónica', label: 'Seguridad Electrónica' },
   { value: 'Seguridad Industrial', label: 'Seguridad Industrial' },
   { value: 'Medio Ambiente', label: 'Medio Ambiente' },
   { value: 'Consultor', label: 'Consultor' },
@@ -84,7 +84,7 @@ export default function UsersView() {
     name: '',
     email: '',
     password: '',
-    role: 'Seguridad electrónica',
+    role: 'Seguridad Electrónica',
     active: true,
   });
 
@@ -93,7 +93,7 @@ export default function UsersView() {
     name: '',
     email: '',
     password: '',
-    role: 'Seguridad electrónica',
+    role: 'Seguridad Electrónica',
     active: true,
   });
 
@@ -175,7 +175,7 @@ export default function UsersView() {
 
       toast.success(`Usuario ${data.name} creado exitosamente`);
       setIsCreateOpen(false);
-      setCreateForm({ name: '', email: '', password: '', role: 'Seguridad electrónica', active: true });
+      setCreateForm({ name: '', email: '', password: '', role: 'Seguridad Electrónica', active: true });
       fetchUsers();
     } catch {
       toast.error('Error al conectar con el servidor');
@@ -392,7 +392,7 @@ export default function UsersView() {
                   <SelectItem value="all">Todos los perfiles</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="Project Manager">Project Manager</SelectItem>
-                  <SelectItem value="Seguridad electrónica">Seguridad Electrónica</SelectItem>
+                  <SelectItem value="Seguridad Electrónica">Seguridad Electrónica</SelectItem>
                   <SelectItem value="Seguridad Industrial">Seguridad Industrial</SelectItem>
                   <SelectItem value="Medio Ambiente">Medio Ambiente</SelectItem>
                   <SelectItem value="Consultor">Consultor</SelectItem>
@@ -633,6 +633,7 @@ export default function UsersView() {
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                   required
                   minLength={6}
+                  autoComplete="new-password"
                   className="h-10 pr-10 border-stone-200 focus-visible:ring-emerald-500 font-mono text-sm"
                 />
                 <button
@@ -747,6 +748,7 @@ export default function UsersView() {
                   placeholder="Ingresa la nueva contraseña (ej. Admin2026!#)"
                   value={editForm.password}
                   onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  autoComplete="new-password"
                   className="h-10 pr-10 border-stone-200 focus-visible:ring-emerald-500 font-mono text-sm bg-white"
                 />
                 <button

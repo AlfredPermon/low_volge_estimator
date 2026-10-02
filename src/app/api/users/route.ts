@@ -146,11 +146,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const cleanPassword = password.trim();
+
     // ── Registrar en Better Auth ─────────────────────────────────────────────
     // Esto crea el registro User + Account con la contraseña hasheada de forma
     // compatible con authClient.signIn.email() del frontend.
     const signUpResult = await auth.api.signUpEmail({
-      body: { email: cleanEmail, password, name },
+      body: { 
+        email: cleanEmail, 
+        password: cleanPassword, 
+        name,
+        role,
+        active
+      },
     });
 
     if (!signUpResult?.user) {
