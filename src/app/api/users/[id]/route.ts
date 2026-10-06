@@ -119,12 +119,28 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // ── Cambio de contraseña: hashPassword de Better Auth es compatible con signIn.email() ──
     if (password && password.trim().length > 0) {
-      const hashedPw = await hashPassword(password.trim());
-      // Actualizar en la tabla Account (donde BA guarda credenciales)
-      await prisma.account.updateMany({
+      const cleanPassword = password.trim();
+      const hashedPw = await hashPassword(cleanPassword);
+      const credentialAccount = await prisma.account.findFirst({
         where: { userId: id, providerId: 'credential' },
-        data: { password: hashedPw },
+        select: { id: true },
       });
+
+      if (credentialAccount) {
+        await prisma.account.update({
+          where: { id: credentialAccount.id },
+          data: { password: hashedPw },
+        });
+      } else {
+        await prisma.account.create({
+          data: {
+            userId: id,
+            accountId: id,
+            providerId: 'credential',
+            password: hashedPw,
+          },
+        });
+      }
     }
 
     const updatedUser = await prisma.user.update({

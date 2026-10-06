@@ -65,6 +65,25 @@ export function buildDefaultEnvironmentEmailBody(
   });
 
   const formattedTotal = formatCurrencyMXN(data.totalAmount);
+  const disbursementSummaryText = data.disbursementPlan
+    ? data.customSummaryText
+      ? `--------------------------------------------------
+  RESUMEN EJECUTIVO DEL PLAN DE EROGACIONES
+--------------------------------------------------
+  ${data.customSummaryText}
+  * Horizonte del Flujo : ${data.disbursementPlan.rows.length} meses
+
+`
+      : `--------------------------------------------------
+  RESUMEN EJECUTIVO DEL PLAN DE EROGACIONES
+--------------------------------------------------
+  * Mes Pico            : ${data.disbursementPlan.summary.peakMonthLabel}
+  * Erogación Máxima    : ${formatCurrencyMXN(data.disbursementPlan.summary.peakMonthTotal)}
+  * Peso del Mes 1      : ${data.disbursementPlan.summary.firstMonthWeightPct.toFixed(1)}% del total
+  * Horizonte del Flujo : ${data.disbursementPlan.rows.length} meses
+
+`
+    : '';
 
   const categoryBreakdownText =
     data.summaryByCategory.length > 0
@@ -118,8 +137,9 @@ Por medio del presente correo, les comparto la Estimación Paramétrica de Segur
 ${categoryBreakdownText}
 
 --------------------------------------------------
-${attachmentNoteText}
+${disbursementSummaryText}${attachmentNoteText}
 
+--------------------------------------------------
 Vigencia de la estimación: 30 días naturales a partir de su emisión.
 
 Quedo atento a cualquier duda o aclaración técnica sobre los rubros normativos y presupuestales expresados.
@@ -186,7 +206,7 @@ export default function EmailEnvironmentDialog({
         setTo(data.responsibleEmail);
       }
     }
-  }, [open, data]);
+  }, [open, data, downloadFormat]);
 
   const cleanProjectName = (data.projectName || 'Proyecto')
     .replace(/[^a-zA-Z0-9_-]/g, '_')

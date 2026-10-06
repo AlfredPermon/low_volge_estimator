@@ -10,6 +10,7 @@ import { formatCurrency } from "./utils";
 import { filterLineItemsForExport } from "./export-filters";
 import type { LineItem, CalculationResult } from "@/store/estimate-store";
 import type { SystemName } from "./calculator";
+import type { EnvironmentDisbursementPlan } from "./environment-erogations";
 
 export interface PdfMetadata {
   name: string;
@@ -978,6 +979,9 @@ export interface EnvironmentPdfMetadata {
   durationMonths: number;
   totalAmount: number;
   summaryByCategory: { cat: string; v: number }[];
+  disbursementPlan?: EnvironmentDisbursementPlan;
+  /** Resumen ejecutivo personalizado por el usuario */
+  customSummaryText?: string;
 }
 
 /**
@@ -1160,6 +1164,89 @@ export function exportEnvironmentReportToPDF(
   doc.text("TOTAL PARAMÉTRICO:", margin + 3, y + 1);
   doc.text(formatCurrency(meta.totalAmount, currency), rightX - 3, y + 1, { align: "right" });
   y += 10;
+
+  if (meta.disbursementPlan && meta.disbursementPlan.rows.length > 0) {
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(4, 120, 87);
+    doc.text("Plan de Erogaciones", margin, y);
+    y += 5;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(40, 40, 40);
+    if (meta.customSummaryText) {
+      // Resumen ejecutivo personalizado por el usuario
+      const summaryLines = doc.splitTextToSize(meta.customSummaryText, pageW - margin * 2);
+      doc.text(summaryLines, margin, y);
+      y += Math.max(5, summaryLines.length * 4 + 2);
+    } else {
+      doc.text(
+        `Pico de erogación: ${meta.disbursementPlan.summary.peakMonthLabel} (${formatCurrency(meta.disbursementPlan.summary.peakMonthTotal, currency)})`,
+        margin,
+        y,
+      );
+      doc.text(
+        `Mes 1: ${meta.disbursementPlan.summary.firstMonthWeightPct.toFixed(1)}% del total`,
+        rightX,
+        y,
+        { align: "right" },
+      );
+      y += 5;
+    }
+
+    const CASH_COL_MONTH = margin + 1;
+    const CASH_COL_PERIOD = margin + 24;
+    const CASH_COL_INMOB = margin + 58;
+    const CASH_COL_EQUIP = margin + 86;
+    const CASH_COL_RRHH = margin + 114;
+    const CASH_COL_TOTAL = margin + 142;
+    const CASH_COL_ACCUM = rightX;
+
+    const drawCashHeader = (yPos: number): number => {
+      doc.setFillColor(10, 46, 26);
+      doc.rect(margin, yPos - 4, pageW - margin * 2, 6, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.2);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Mes", CASH_COL_MONTH, yPos);
+      doc.text("Periodo", CASH_COL_PERIOD, yPos);
+      doc.text("Inmob.", CASH_COL_INMOB, yPos, { align: "right" });
+      doc.text("Equipo", CASH_COL_EQUIP, yPos, { align: "right" });
+      doc.text("RRHH", CASH_COL_RRHH, yPos, { align: "right" });
+      doc.text("Total", CASH_COL_TOTAL, yPos, { align: "right" });
+      doc.text("Acumulado", CASH_COL_ACCUM, yPos, { align: "right" });
+      return yPos + 4;
+    };
+
+    y = drawCashHeader(y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.2);
+    doc.setTextColor(40, 40, 40);
+
+    meta.disbursementPlan.rows.forEach((row) => {
+      if (y + 5 > pageH - 45) {
+        doc.addPage();
+        y = margin;
+        y = drawCashHeader(y);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.2);
+        doc.setTextColor(40, 40, 40);
+      }
+
+      doc.text(row.monthLabel, CASH_COL_MONTH, y);
+      doc.text(row.periodLabel, CASH_COL_PERIOD, y);
+      doc.text(formatCurrency(row.inmobiliario, currency), CASH_COL_INMOB, y, { align: "right" });
+      doc.text(formatCurrency(row.equipo, currency), CASH_COL_EQUIP, y, { align: "right" });
+      doc.text(formatCurrency(row.rrhh, currency), CASH_COL_RRHH, y, { align: "right" });
+      doc.text(formatCurrency(row.totalMonthly, currency), CASH_COL_TOTAL, y, { align: "right" });
+      doc.text(formatCurrency(row.cumulativeTotal, currency), CASH_COL_ACCUM, y, { align: "right" });
+      y += 4.6;
+    });
+
+    y += 8;
+  }
 
   // ─── Cuadro de Firmas
   ensureSpace(35);

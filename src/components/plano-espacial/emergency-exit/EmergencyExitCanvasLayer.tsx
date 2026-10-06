@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   EmergencySignDevice,
-  NOM026SignCategory,
   ArrowDirection,
 } from '@/types/emergencySignage';
 import { useEmergencyStore } from '@/store/useEmergencyStore';
@@ -31,9 +30,44 @@ interface EmergencyExitCanvasLayerProps {
   onMouseDownMarker?: (device: EmergencySignDevice, e: React.MouseEvent) => void;
 }
 
-// ─── Direct Vector SVG Sign Components matching standard NOM-026 images ────────
+const ICON_BASE_SIZE_PX = 72;
+const ICON_HALF_SIZE_PX = ICON_BASE_SIZE_PX / 2;
+const SIGN_GREEN = '#00A651';
 
-/** 1. SALIDA DE EMERGENCIA (Matches Reference Image 2) */
+function CircularSignShell({
+  angle = 0,
+  scale = 1,
+  children,
+  doubleRing = false,
+}: {
+  angle?: number;
+  scale?: number;
+  children: React.ReactNode;
+  doubleRing?: boolean;
+}) {
+  return (
+    <div
+      className="relative flex items-center justify-center transition-transform duration-75 select-none origin-center"
+      style={{
+        transform: `rotate(${angle}deg) scale(${scale})`,
+        filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.4))',
+      }}
+    >
+      <svg
+        width={ICON_BASE_SIZE_PX}
+        height={ICON_BASE_SIZE_PX}
+        viewBox="0 0 100 100"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="50" cy="50" r="47" fill={SIGN_GREEN} stroke="#FFFFFF" strokeWidth="6" />
+        {doubleRing && <circle cx="50" cy="50" r="42" stroke="#FFFFFF" strokeWidth="2.4" opacity="0.95" />}
+        {children}
+      </svg>
+    </div>
+  );
+}
+
 function SalidaDeEmergenciaSvg({
   angle = 0,
   scale = 1.0,
@@ -42,68 +76,24 @@ function SalidaDeEmergenciaSvg({
   scale?: number;
 }) {
   return (
-    <div
-      className="relative flex items-center justify-center transition-transform duration-75 select-none origin-center"
-      style={{
-        transform: `rotate(${angle}deg) scale(${scale})`,
-        filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.4))',
-      }}
-    >
-      <svg
-        width="82"
-        height="50"
-        viewBox="0 0 140 84"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="rounded-md"
-      >
-        {/* Plaque background #00A651 */}
-        <rect x="2" y="2" width="136" height="80" rx="6" fill="#00A651" stroke="#FFFFFF" strokeWidth="3" />
-        <rect x="5" y="5" width="130" height="74" rx="4" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-
-        {/* Pictogram: Person walking left + Left Arrow + Open Door */}
-        <g transform="translate(10, 8)">
-          {/* Person walking left */}
-          <g stroke="#FFFFFF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" fill="none">
-            <circle cx="28" cy="8" r="4.5" fill="#FFFFFF" stroke="none" />
-            <path d="M 28 14 C 23 18, 20 22, 19 28" />
-            <path d="M 28 16 L 22 22 L 15 20" />
-            <path d="M 28 16 L 33 22" />
-            <path d="M 19 28 L 14 38 L 10 42" />
-            <path d="M 19 28 L 26 36 L 29 42" />
-          </g>
-
-          {/* Left Arrow */}
-          <g fill="#FFFFFF">
-            <path d="M 64 25 L 47 25 L 47 19 L 36 28 L 47 37 L 47 31 L 64 31 Z" />
-          </g>
-
-          {/* Open Door Frame & Panel */}
-          <g stroke="#FFFFFF" strokeWidth="3" fill="none" strokeLinejoin="round">
-            <rect x="70" y="6" width="22" height="42" />
-            <polygon points="74,9 90,14 90,41 74,45" fill="#FFFFFF" opacity="0.95" stroke="#00A651" strokeWidth="1.5" />
-          </g>
-        </g>
-
-        {/* Text SALIDA DE EMERGENCIA */}
-        <text
-          x="70"
-          y="74"
-          textAnchor="middle"
-          fill="#FFFFFF"
-          fontSize="10.5"
-          fontWeight="900"
-          fontFamily="system-ui, -apple-system, sans-serif"
-          letterSpacing="0.4"
-        >
-          SALIDA DE EMERGENCIA
-        </text>
-      </svg>
-    </div>
+    <CircularSignShell angle={angle} scale={scale} doubleRing>
+      <g stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <circle cx="33" cy="33" r="4.2" fill="#FFFFFF" stroke="none" />
+        <path d="M 33 38 L 29 50 L 24 57" />
+        <path d="M 33 39 L 42 46" />
+        <path d="M 29 50 L 37 62" />
+        <path d="M 29 50 L 23 67" />
+        <path d="M 42 46 L 50 51" />
+      </g>
+      <path d="M 48 48 H 67 V 43 L 78 50 L 67 57 V 52 H 48 Z" fill="#FFFFFF" />
+      <g stroke="#FFFFFF" strokeWidth="3" strokeLinejoin="round">
+        <path d="M 62 28 H 78 V 72 H 62" />
+        <path d="M 66 31 L 74 35 V 66 L 66 69 Z" fill="#FFFFFF" stroke={SIGN_GREEN} strokeWidth="1.5" />
+      </g>
+    </CircularSignShell>
   );
 }
 
-/** 2. ESCALERA DE EMERGENCIA (Matches Reference Image 1) */
 function EscaleraDeEmergenciaSvg({
   angle = 0,
   scale = 1.0,
@@ -112,67 +102,22 @@ function EscaleraDeEmergenciaSvg({
   scale?: number;
 }) {
   return (
-    <div
-      className="relative flex items-center justify-center transition-transform duration-75 select-none origin-center"
-      style={{
-        transform: `rotate(${angle}deg) scale(${scale})`,
-        filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.4))',
-      }}
-    >
-      <svg
-        width="82"
-        height="50"
-        viewBox="0 0 140 84"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="rounded-md"
-      >
-        <rect x="2" y="2" width="136" height="80" rx="6" fill="#00A651" stroke="#FFFFFF" strokeWidth="3" />
-        <rect x="5" y="5" width="130" height="74" rx="4" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
-
-        {/* Pictogram: Person running right + Right Arrow + Staircase */}
-        <g transform="translate(8, 8)">
-          <g stroke="#FFFFFF" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" fill="none">
-            <circle cx="16" cy="8" r="4.5" fill="#FFFFFF" stroke="none" />
-            <path d="M 16 14 C 20 18, 23 22, 24 28" />
-            <path d="M 16 16 L 22 21 L 28 19" />
-            <path d="M 16 16 L 11 22" />
-            <path d="M 24 28 L 29 37 L 33 41" />
-            <path d="M 24 28 L 17 36 L 14 42" />
-          </g>
-
-          {/* Right Arrow */}
-          <g fill="#FFFFFF">
-            <path d="M 38 25 L 55 25 L 55 19 L 66 28 L 55 37 L 55 31 L 38 31 Z" />
-          </g>
-
-          {/* Staircase & Railing */}
-          <g fill="#FFFFFF" stroke="#FFFFFF" strokeWidth="1">
-            <polygon points="72,46 72,40 78,40 78,34 84,34 84,28 90,28 90,22 96,22 96,16 102,16 102,46" />
-            <path d="M 68,43 L 97,14 L 102,14 L 102,17 L 73,46 Z" />
-            <rect x="97" y="16" width="3.5" height="30" fill="#FFFFFF" />
-          </g>
-        </g>
-
-        {/* Text ESCALERA DE EMERGENCIA */}
-        <text
-          x="70"
-          y="74"
-          textAnchor="middle"
-          fill="#FFFFFF"
-          fontSize="10"
-          fontWeight="900"
-          fontFamily="system-ui, -apple-system, sans-serif"
-          letterSpacing="0.2"
-        >
-          ESCALERA DE EMERGENCIA
-        </text>
-      </svg>
-    </div>
+    <CircularSignShell angle={angle} scale={scale}>
+      <g stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <circle cx="38" cy="26" r="4.3" fill="#FFFFFF" stroke="none" />
+        <path d="M 38 31 L 36 44 L 42 52" />
+        <path d="M 37 35 L 31 43" />
+        <path d="M 42 38 L 49 43" />
+        <path d="M 36 44 L 29 54" />
+        <path d="M 42 52 L 42 67" />
+      </g>
+      <path d="M 66 30 V 55" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M 60 49 L 66 56 L 72 49" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M 28 66 H 38 V 58 H 48 V 50 H 58" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+    </CircularSignShell>
   );
 }
 
-/** 3. RUTA DE EVACUACIÓN (Matches Reference Image 3) */
 function RutaDeEvacuacionSvg({
   angle = 0,
   scale = 1.0,
@@ -183,62 +128,35 @@ function RutaDeEvacuacionSvg({
   routeNumber?: string;
 }) {
   return (
-    <div
-      className="relative flex items-center justify-center transition-transform duration-75 select-none origin-center"
-      style={{
-        transform: `rotate(${angle}deg) scale(${scale})`,
-        filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.4))',
-      }}
-    >
-      <svg
-        width="82"
-        height="50"
-        viewBox="0 0 140 84"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="rounded-md"
+    <CircularSignShell angle={angle} scale={scale}>
+      <path d="M 23 44 H 57 V 36 L 72 50 L 57 64 V 56 H 23 Z" fill="#FFFFFF" />
+      <text
+        x="50"
+        y="82"
+        textAnchor="middle"
+        fill="#FFFFFF"
+        fontSize="8.5"
+        fontWeight="900"
+        fontFamily="system-ui, -apple-system, sans-serif"
       >
-        <rect x="3" y="3" width="134" height="78" rx="10" fill="#00A651" stroke="#FFFFFF" strokeWidth="3" />
-        <rect x="7" y="7" width="126" height="70" rx="8" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
-
-        {/* Large Central Arrow */}
-        <g fill="#FFFFFF" transform="translate(14, 12)">
-          <path d="M 4 14 L 64 14 C 64 14 64 3 64 3 L 102 24 L 64 45 C 64 45 64 34 64 34 L 4 34 Z" />
-        </g>
-
-        {/* Text RUTA DE EVACUACIÓN */}
+        RUTA DE EVACUACION
+      </text>
+      {routeNumber && (
         <text
-          x="16"
-          y="72"
+          x="76"
+          y="76"
           fill="#FFFFFF"
-          fontSize="9.5"
+          fontSize="10"
           fontWeight="900"
           fontFamily="system-ui, -apple-system, sans-serif"
-          letterSpacing="0.3"
         >
-          RUTA DE EVACUACIÓN
+          {routeNumber}
         </text>
-
-        {/* Optional Route Number */}
-        {routeNumber && (
-          <text
-            x="122"
-            y="74"
-            textAnchor="end"
-            fill="#FFFFFF"
-            fontSize="22"
-            fontWeight="900"
-            fontFamily="system-ui, -apple-system, sans-serif"
-          >
-            {routeNumber}
-          </text>
-        )}
-      </svg>
-    </div>
+      )}
+    </CircularSignShell>
   );
 }
 
-/** 4. ZONA DE SEGURIDAD SVG */
 function ZonaDeSeguridadSvg({
   angle = 0,
   scale = 1.0,
@@ -247,51 +165,19 @@ function ZonaDeSeguridadSvg({
   scale?: number;
 }) {
   return (
-    <div
-      className="relative flex items-center justify-center transition-transform duration-75 select-none origin-center"
-      style={{
-        transform: `rotate(${angle}deg) scale(${scale})`,
-        filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.4))',
-      }}
-    >
-      <svg
-        width="82"
-        height="50"
-        viewBox="0 0 140 84"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="rounded-md"
-      >
-        <rect x="2" y="2" width="136" height="80" rx="6" fill="#00A651" stroke="#FFFFFF" strokeWidth="3" />
-        <g transform="translate(42, 8)" fill="#FFFFFF">
-          <polygon points="28,2 24,10 32,10" />
-          <polygon points="28,42 24,34 32,34" />
-          <polygon points="2,22 10,18 10,26" />
-          <polygon points="54,22 46,18 46,26" />
-          <circle cx="28" cy="18" r="3" />
-          <path d="M 23 28 C 23 23, 33 23, 33 28 Z" />
-          <circle cx="20" cy="20" r="2.5" />
-          <path d="M 16 29 C 16 25, 24 25, 24 29 Z" />
-          <circle cx="36" cy="20" r="2.5" />
-          <path d="M 32 29 C 32 25, 40 25, 40 29 Z" />
-        </g>
-        <text
-          x="70"
-          y="74"
-          textAnchor="middle"
-          fill="#FFFFFF"
-          fontSize="10"
-          fontWeight="900"
-          fontFamily="system-ui, -apple-system, sans-serif"
-        >
-          ZONA DE SEGURIDAD
-        </text>
-      </svg>
-    </div>
+    <CircularSignShell angle={angle} scale={scale} doubleRing>
+      <path d="M 50 20 V 35" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
+      <path d="M 43 29 L 50 36 L 57 29" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M 20 50 H 35" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
+      <path d="M 29 43 L 36 50 L 29 57" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M 80 50 H 65" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
+      <path d="M 71 43 L 64 50 L 71 57" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M 50 80 V 65" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
+      <path d="M 43 71 L 50 64 L 57 71" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </CircularSignShell>
   );
 }
 
-/** 5. PRIMEROS AUXILIOS SVG */
 function PrimerosAuxiliosSvg({
   angle = 0,
   scale = 1.0,
@@ -300,39 +186,9 @@ function PrimerosAuxiliosSvg({
   scale?: number;
 }) {
   return (
-    <div
-      className="relative flex items-center justify-center transition-transform duration-75 select-none origin-center"
-      style={{
-        transform: `rotate(${angle}deg) scale(${scale})`,
-        filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.4))',
-      }}
-    >
-      <svg
-        width="82"
-        height="50"
-        viewBox="0 0 140 84"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="rounded-md"
-      >
-        <rect x="2" y="2" width="136" height="80" rx="6" fill="#00A651" stroke="#FFFFFF" strokeWidth="3" />
-        <g fill="#FFFFFF" transform="translate(54, 10)">
-          <rect x="12" y="4" width="8" height="32" rx="1.5" />
-          <rect x="0" y="16" width="32" height="8" rx="1.5" />
-        </g>
-        <text
-          x="70"
-          y="74"
-          textAnchor="middle"
-          fill="#FFFFFF"
-          fontSize="10"
-          fontWeight="900"
-          fontFamily="system-ui, -apple-system, sans-serif"
-        >
-          PRIMEROS AUXILIOS
-        </text>
-      </svg>
-    </div>
+    <CircularSignShell angle={angle} scale={scale}>
+      <path d="M 44 25 H 56 V 44 H 75 V 56 H 56 V 75 H 44 V 56 H 25 V 44 H 44 Z" fill="#FFFFFF" />
+    </CircularSignShell>
   );
 }
 
@@ -724,16 +580,16 @@ export function EmergencyExitCanvasLayer({
                 {/* Bounding box outline */}
                 <div
                   style={{
-                    width: `${86 * scale}px`,
-                    height: `${54 * scale}px`,
+                    width: `${ICON_BASE_SIZE_PX * scale}px`,
+                    height: `${ICON_BASE_SIZE_PX * scale}px`,
                   }}
-                  className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 border border-emerald-400/80 rounded-md ring-1 ring-emerald-400/30"
+                  className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 border border-emerald-400/80 rounded-full ring-1 ring-emerald-400/30"
                 />
 
                 {/* Corner Handle: Top-Left */}
                 <span
                   onMouseDown={(e) => handleStartCornerResize(dev, e)}
-                  style={{ transform: `translate(${-43 * scale}px, ${-27 * scale}px)` }}
+                  style={{ transform: `translate(${-ICON_HALF_SIZE_PX * scale}px, ${-ICON_HALF_SIZE_PX * scale}px)` }}
                   className="corner-resize-handle absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-emerald-600 shadow-md cursor-nwse-resize hover:scale-125 transition-transform pointer-events-auto z-40 ring-2 ring-emerald-400/50"
                   title="Arrastrar con clic izquierdo: hacia afuera para aumentar, hacia adentro para reducir"
                 />
@@ -741,7 +597,7 @@ export function EmergencyExitCanvasLayer({
                 {/* Corner Handle: Top-Right */}
                 <span
                   onMouseDown={(e) => handleStartCornerResize(dev, e)}
-                  style={{ transform: `translate(${43 * scale}px, ${-27 * scale}px)` }}
+                  style={{ transform: `translate(${ICON_HALF_SIZE_PX * scale}px, ${-ICON_HALF_SIZE_PX * scale}px)` }}
                   className="corner-resize-handle absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-emerald-600 shadow-md cursor-nesw-resize hover:scale-125 transition-transform pointer-events-auto z-40 ring-2 ring-emerald-400/50"
                   title="Arrastrar con clic izquierdo: hacia afuera para aumentar, hacia adentro para reducir"
                 />
@@ -749,7 +605,7 @@ export function EmergencyExitCanvasLayer({
                 {/* Corner Handle: Bottom-Left */}
                 <span
                   onMouseDown={(e) => handleStartCornerResize(dev, e)}
-                  style={{ transform: `translate(${-43 * scale}px, ${27 * scale}px)` }}
+                  style={{ transform: `translate(${-ICON_HALF_SIZE_PX * scale}px, ${ICON_HALF_SIZE_PX * scale}px)` }}
                   className="corner-resize-handle absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-emerald-600 shadow-md cursor-nesw-resize hover:scale-125 transition-transform pointer-events-auto z-40 ring-2 ring-emerald-400/50"
                   title="Arrastrar con clic izquierdo: hacia afuera para aumentar, hacia adentro para reducir"
                 />
@@ -757,7 +613,7 @@ export function EmergencyExitCanvasLayer({
                 {/* Corner Handle: Bottom-Right */}
                 <span
                   onMouseDown={(e) => handleStartCornerResize(dev, e)}
-                  style={{ transform: `translate(${43 * scale}px, ${27 * scale}px)` }}
+                  style={{ transform: `translate(${ICON_HALF_SIZE_PX * scale}px, ${ICON_HALF_SIZE_PX * scale}px)` }}
                   className="corner-resize-handle absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-emerald-600 shadow-md cursor-nwse-resize hover:scale-125 transition-transform pointer-events-auto z-40 ring-2 ring-emerald-400/50"
                   title="Arrastrar con clic izquierdo: hacia afuera para aumentar, hacia adentro para reducir"
                 />

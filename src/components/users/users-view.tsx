@@ -652,6 +652,10 @@ export default function UsersView() {
                   </div>
                 </button>
               </div>
+              <p className="text-[11px] text-amber-700 flex items-start gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                Esta contraseña solo se conoce al momento de crearla. Después se almacena de forma segura y ya no puede consultarse en texto visible.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -704,7 +708,7 @@ export default function UsersView() {
               Editar Usuario
             </DialogTitle>
             <DialogDescription className="text-xs text-stone-500">
-              Modifica la información personal, perfil asignado o actualiza la contraseña de acceso.
+              Modifica la información personal, perfil asignado o restablece la contraseña de acceso.
             </DialogDescription>
           </DialogHeader>
 
@@ -735,7 +739,7 @@ export default function UsersView() {
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  Cambiar Contraseña
+                  Restablecer Contraseña
                 </Label>
                 <span className="text-[11px] text-stone-400 font-normal">
                   (Dejar en blanco para mantener la actual)
@@ -745,7 +749,7 @@ export default function UsersView() {
               <div className="relative flex items-center mt-1">
                 <Input
                   type={showEditPassword ? 'text' : 'password'}
-                  placeholder="Ingresa la nueva contraseña (ej. Admin2026!#)"
+                  placeholder="Escribe una nueva contraseña para reemplazar la actual"
                   value={editForm.password}
                   onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                   autoComplete="new-password"
@@ -768,10 +772,15 @@ export default function UsersView() {
                 </button>
               </div>
 
+              <p className="text-[11px] text-stone-500 flex items-start gap-1.5 mt-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+                La contraseña actual no puede visualizarse porque el sistema la almacena con hash seguro. Si necesitas conocerla, debes asignar una nueva.
+              </p>
+
               {showEditPassword && (
                 <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1 mt-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  Modo texto visible activado (letras, números y caracteres especiales visibles).
+                  Modo texto visible activado para la nueva contraseña.
                 </p>
               )}
             </div>

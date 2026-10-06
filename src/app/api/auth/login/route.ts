@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureDatabaseSchema } from '@/lib/db';
 import { verifyPasswordAsync, createSession, hashPasswordAsync, isLegacyPasswordHash, SESSION_COOKIE_NAME, SESSION_MAX_AGE_DAYS } from '@/lib/auth';
+import { hashPassword, verifyPassword } from 'better-auth/crypto';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
@@ -37,6 +38,13 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
+      include: {
+        accounts: {
+          where: { providerId: 'credential' },
+          select: { id: true, password: true },
+          take: 1,
+        },
+      },
     });
 
     if (!user || !user.active) {
@@ -46,14 +54,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user.passwordHash) {
-      return NextResponse.json(
-        { error: 'Credenciales incorrectas o usuario desactivado' },
-        { status: 401 }
-      );
+    const credentialAccount = user.accounts[0] ?? null;
+
+    let isValid = false;
+    let authenticatedViaLegacyHash = false;
+
+    if (credentialAccount?.password) {
+      isValid = await verifyPassword({ password, hash: credentialAccount.password });
+    } else if (user.passwordHash) {
+      authenticatedViaLegacyHash = true;
+      isValid = await verifyPasswordAsync(password, user.passwordHash);
     }
 
-    const isValid = await verifyPasswordAsync(password, user.passwordHash);
     if (!isValid) {
       return NextResponse.json(
         { error: 'Credenciales incorrectas o usuario desactivado' },
@@ -61,8 +73,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Backfill lazy: cuentas legacy -> Account.password (Better Auth) ──
+    if (authenticatedViaLegacyHash && user.passwordHash) {
+      try {
+        const betterAuthHash = await hashPassword(password);
+
+        if (credentialAccount) {
+          await prisma.account.update({
+            where: { id: credentialAccount.id },
+            data: { password: betterAuthHash },
+          });
+        } else {
+          await prisma.account.create({
+            data: {
+              userId: user.id,
+              accountId: user.id,
+              providerId: 'credential',
+              password: betterAuthHash,
+            },
+          });
+        }
+      } catch (migrateErr) {
+        console.error('Error backfilling Better Auth credential account:', migrateErr);
+      }
+    }
+
     // ── Migración lazy de hashes legacy (salt:sha256 → PBKDF2) ──
-    if (isLegacyPasswordHash(user.passwordHash)) {
+    if (user.passwordHash && isLegacyPasswordHash(user.passwordHash)) {
       try {
         await prisma.user.update({
           where: { id: user.id },

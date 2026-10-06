@@ -1,20 +1,22 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Leaf, ChevronRight, CheckCircle2, ChevronLeft, Loader2, Printer, ArrowRight, Search, Building2, User, Mail } from 'lucide-react';
+import { Leaf, ChevronRight, CheckCircle2, ChevronLeft, Loader2, Printer, Search, Building2, User, Mail, Pencil, Save, RotateCcw } from 'lucide-react';
 import { useEstimateStore } from '@/store/estimate-store';
 import { toast } from 'sonner';
-import { exportEnvironmentReportToPDF, EnvironmentPdfItem, EnvironmentPdfMetadata } from '@/lib/pdf-export';
 import EmailEnvironmentDialog from '@/components/estimator/email-environment-dialog';
-import type { EnvironmentExportData } from '@/lib/environment-export';
+import EnvironmentDisbursementPlanView from '@/components/estimator/environment-disbursement-plan';
+import { exportEnvironmentFormToPDF, type EnvironmentExportData } from '@/lib/environment-export';
+import { buildEnvironmentDisbursementPlan } from '@/lib/environment-erogations';
 
 // --- Constantes del Mockup ---
 const REGIONES = [
@@ -42,6 +44,14 @@ const WIZARD_STEPS = [
   { id: 'summary', label: 'Resumen' },
 ];
 
+const PROJECT_TYPES = ['Remodelación', 'Ampliación', 'Construcción'] as const;
+
+const STAGE_OPTIONS = [
+  { v: 'Pre-construcción', l: '📐 Pre-construcción' },
+  { v: 'Construcción', l: '🏗️ Construcción' },
+  { v: 'Concluido/Cierre', l: '✅ Concluido / Cierre' },
+] as const;
+
 type DBPrice = {
   id: string;
   sku: string;
@@ -55,6 +65,62 @@ type DBPrice = {
   performance: number;
   deviceType: string;
 };
+
+function isHumanResourceItem(item: Pick<DBPrice, 'description' | 'category' | 'system'>) {
+  const txt = `${item.description} ${item.category} ${item.system}`.toLowerCase();
+  return txt.includes('recurso humano') || txt.includes('coordinador') || txt.includes('supervisor');
+}
+
+function resolveErogationBucket(item: Pick<DBPrice, 'description' | 'category' | 'system'>): 'inmobiliario' | 'equipo' | 'rrhh' {
+  if (isHumanResourceItem(item)) {
+    return 'rrhh';
+  }
+
+  const txt = `${item.description} ${item.category} ${item.system}`.toLowerCase();
+  if (txt.includes('inmobiliario')) {
+    return 'inmobiliario';
+  }
+
+  // Equipo concentra equipamiento y rubros técnicos sin categoría inmobiliaria para no dejar partidas fuera del flujo.
+  return 'equipo';
+}
+
+// ─── Persistencia local del módulo Medio Ambiente ───────────────────────
+// Guarda selecciones de partidas, cantidades, configuración del wizard y
+// resumen ejecutivo personalizado en localStorage, indexado por project ID.
+
+interface EnvPersistedState {
+  selectedItems: string[];
+  quantities: Record<string, number>;
+  projectType: 'Remodelación' | 'Ampliación' | 'Construcción';
+  region: number;
+  stage: 'Pre-construcción' | 'Construcción' | 'Concluido/Cierre';
+  wizardStep: number;
+  customSummaryText: string;
+  useCustomSummary: boolean;
+}
+
+function getEnvStorageKey(estimateId: string | null): string {
+  return `env_partidas_${estimateId || 'default'}`;
+}
+
+function loadEnvState(estimateId: string | null): Partial<EnvPersistedState> | null {
+  try {
+    const raw = localStorage.getItem(getEnvStorageKey(estimateId));
+    if (!raw) return null;
+    return JSON.parse(raw) as Partial<EnvPersistedState>;
+  } catch {
+    return null;
+  }
+}
+
+function saveEnvState(estimateId: string | null, state: EnvPersistedState): void {
+  try {
+    localStorage.setItem(getEnvStorageKey(estimateId), JSON.stringify(state));
+  } catch {
+    // Silenciar errores de cuota o serialización
+  }
+}
 
 // Simularemos la matriz del Excel inyectando unas reglas de aplicabilidad a los datos extraídos de la BD si pertenecen a Medio Ambiente.
 // Como la base de datos "Precios" real tal vez no tenga las columnas de Etapa, Tipo de Proyecto, o los multiplicadores por Región del Excel,
@@ -77,7 +143,16 @@ export default function EnvironmentView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
-  // 1. Cargar el catálogo
+  // Estado del resumen ejecutivo editable
+  const [customSummaryText, setCustomSummaryText] = useState('');
+  const [useCustomSummary, setUseCustomSummary] = useState(false);
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+
+  // Indicador de auto-guardado
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 1. Cargar el catálogo y restaurar estado persistido
   useEffect(() => {
     async function loadPrices() {
       try {
@@ -101,15 +176,49 @@ export default function EnvironmentView() {
           });
           
           setCatalog(envItems);
-          
-          // Partidas deseleccionadas por defecto
-          const newSel = new Set<string>();
-          const newQty: Record<string, number> = {};
-          envItems.forEach(i => {
-            newQty[i.id] = 1;
-          });
-          setSelectedItems(newSel);
-          setQuantities(newQty);
+
+          // Cargar estado persistido desde localStorage
+          const estId = store.activeEstimateId || store.estimateId;
+          const saved = loadEnvState(estId);
+
+          if (saved) {
+            // Restaurar selecciones (solo IDs que existan en el catálogo actual)
+            const catalogIds = new Set(envItems.map(i => i.id));
+            const savedSel = new Set<string>(
+              (saved.selectedItems || []).filter(id => catalogIds.has(id))
+            );
+            setSelectedItems(savedSel);
+
+            // Restaurar cantidades (merge con defaults para items nuevos)
+            const newQty: Record<string, number> = {};
+            envItems.forEach(i => {
+              newQty[i.id] = saved.quantities?.[i.id] ?? 1;
+            });
+            setQuantities(newQty);
+
+            // Restaurar configuración del wizard
+            if (saved.projectType) setProjectType(saved.projectType);
+            if (typeof saved.region === 'number') setRegion(saved.region);
+            if (saved.stage) setStage(saved.stage);
+            if (typeof saved.wizardStep === 'number' && saved.wizardStep <= 3) {
+              setWizardStep(saved.wizardStep);
+            }
+            if (typeof saved.customSummaryText === 'string') {
+              setCustomSummaryText(saved.customSummaryText);
+            }
+            if (typeof saved.useCustomSummary === 'boolean') {
+              setUseCustomSummary(saved.useCustomSummary);
+            }
+          } else {
+            // Sin estado previo: inicializar con defaults
+            const newSel = new Set<string>();
+            const newQty: Record<string, number> = {};
+            envItems.forEach(i => {
+              newQty[i.id] = 1;
+            });
+            setSelectedItems(newSel);
+            setQuantities(newQty);
+          }
         }
       } catch (err) {
         toast.error('Error al cargar la base de datos de precios');
@@ -118,6 +227,7 @@ export default function EnvironmentView() {
       }
     }
     loadPrices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 2. Cálculo de meses
@@ -128,6 +238,37 @@ export default function EnvironmentView() {
     if (isNaN(a.getTime()) || isNaN(b.getTime())) return 1;
     return Math.max(1, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + 1);
   }, [store.startDate, store.endDate]);
+
+  // 2b. Auto-guardado persistente (debounce 500ms)
+  const catalogLoadedRef = useRef(false);
+  useEffect(() => {
+    // No guardar hasta que el catálogo se haya cargado
+    if (loadingCatalog || catalog.length === 0) return;
+    catalogLoadedRef.current = true;
+
+    setAutoSaveStatus('saving');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const estId = store.activeEstimateId || store.estimateId;
+      saveEnvState(estId, {
+        selectedItems: Array.from(selectedItems),
+        quantities,
+        projectType,
+        region,
+        stage,
+        wizardStep,
+        customSummaryText,
+        useCustomSummary,
+      });
+      setAutoSaveStatus('saved');
+      // Limpiar el indicador después de 1.5s
+      setTimeout(() => setAutoSaveStatus('idle'), 1500);
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [selectedItems, quantities, projectType, region, stage, wizardStep, customSummaryText, useCustomSummary, loadingCatalog, catalog.length, store.activeEstimateId, store.estimateId]);
 
   // 3. Lógica de cálculo paramétrico (Item x meses x región, etc)
   const calculateItemAmount = useCallback((item: DBPrice) => {
@@ -171,22 +312,37 @@ export default function EnvironmentView() {
   }, [catalog, selectedItems, calculateItemAmount]);
 
   const environmentExportData: EnvironmentExportData = useMemo(() => {
-    const selectedItemsList = catalog
-      .filter((item) => selectedItems.has(item.id))
-      .map((item) => {
-        const isHumanRes = item.description.toLowerCase().includes('recurso humano');
-        return {
-          id: item.id,
-          description: item.description,
-          category: item.category || item.system,
-          unit: item.unit,
-          quantity: quantities[item.id] || 1,
-          unitCost: item.unitCost,
-          totalAmount: calculateItemAmount(item),
-          isHumanRes,
-          months,
-        };
-      });
+    const selectedCatalogItems = catalog.filter((item) => selectedItems.has(item.id));
+    const selectedItemsList = selectedCatalogItems.map((item) => {
+      const isHumanRes = isHumanResourceItem(item);
+      return {
+        id: item.id,
+        description: item.description,
+        category: item.category || item.system,
+        unit: item.unit,
+        quantity: quantities[item.id] || 1,
+        unitCost: item.unitCost,
+        totalAmount: calculateItemAmount(item),
+        isHumanRes,
+        months,
+      };
+    });
+
+    const disbursementTotals = selectedCatalogItems.reduce(
+      (acc, item) => {
+        const bucket = resolveErogationBucket(item);
+        acc[bucket] += calculateItemAmount(item);
+        return acc;
+      },
+      { inmobiliario: 0, equipo: 0, rrhh: 0 },
+    );
+
+    const disbursementPlan = buildEnvironmentDisbursementPlan({
+      durationMonths: months,
+      humanResMonths: months + 2,
+      startDate: store.startDate,
+      categoryTotals: disbursementTotals,
+    });
 
     return {
       projectName: store.projectName || 'Sin Proyecto',
@@ -201,16 +357,18 @@ export default function EnvironmentView() {
       totalAmount,
       items: selectedItemsList,
       summaryByCategory,
+      disbursementPlan,
+      customSummaryText: useCustomSummary ? customSummaryText : undefined,
     };
-  }, [catalog, selectedItems, quantities, calculateItemAmount, store, region, stage, projectType, months, totalAmount, summaryByCategory]);
+  }, [catalog, selectedItems, quantities, calculateItemAmount, store, region, stage, projectType, months, totalAmount, summaryByCategory, useCustomSummary, customSummaryText]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val);
   };
 
   // --- Handlers ---
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
+  const toggleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
       const allIds = new Set(filteredCatalog.map(i => i.id));
       setSelectedItems(allIds);
     } else {
@@ -230,40 +388,48 @@ export default function EnvironmentView() {
     setQuantities(prev => ({ ...prev, [id]: num }));
   };
 
+  // Resumen ejecutivo auto-generado (texto por defecto)
+  const autoSummaryText = useMemo(() => {
+    if (!environmentExportData.disbursementPlan) return '';
+    const s = environmentExportData.disbursementPlan.summary;
+    return `El mayor desembolso ocurre en ${s.peakMonthLabel} con ${formatCurrency(s.peakMonthTotal)}. El primer mes concentra ${s.firstMonthWeightPct.toFixed(1)}% del presupuesto total.`;
+  }, [environmentExportData.disbursementPlan]);
+
+  // Texto a mostrar: personalizado o auto-generado
+  const displaySummaryText = useCustomSummary ? customSummaryText : autoSummaryText;
+
+  // Iniciar edición del resumen (carga el texto auto-generado como punto de partida)
+  const startEditingSummary = () => {
+    if (!customSummaryText) {
+      setCustomSummaryText(autoSummaryText);
+    }
+    setIsEditingSummary(true);
+  };
+
+  // Guardar edición y marcar como personalizado
+  const saveCustomSummary = () => {
+    setUseCustomSummary(true);
+    setIsEditingSummary(false);
+  };
+
+  // Cancelar edición
+  const cancelEditSummary = () => {
+    setIsEditingSummary(false);
+    if (!useCustomSummary) {
+      setCustomSummaryText('');
+    }
+  };
+
+  // Restaurar el texto auto-generado
+  const resetToAutoSummary = () => {
+    setUseCustomSummary(false);
+    setCustomSummaryText('');
+    setIsEditingSummary(false);
+  };
+
   const handleExportPDF = () => {
     try {
-      const items: EnvironmentPdfItem[] = filteredCatalog
-        .filter(item => selectedItems.has(item.id))
-        .map(item => {
-          const isHumanRes = item.description.toLowerCase().includes('recurso humano');
-          return {
-            id: item.id,
-            description: item.description,
-            category: item.category || item.system,
-            unit: item.unit,
-            quantity: quantities[item.id] || 1,
-            unitCost: item.unitCost,
-            totalAmount: calculateItemAmount(item),
-            isHumanRes,
-            months,
-          };
-        });
-
-      const meta: EnvironmentPdfMetadata = {
-        projectName: store.projectName,
-        clientName: store.clientName,
-        responsible: store.envResponsable || store.responsible,
-        revision: store.revision,
-        currency: store.currency,
-        regionName: REGIONES.find(r => r.id === region)?.n || '',
-        stageName: stage,
-        projectType,
-        durationMonths: months,
-        totalAmount,
-        summaryByCategory,
-      };
-
-      const filename = exportEnvironmentReportToPDF(items, meta);
+      const filename = exportEnvironmentFormToPDF(environmentExportData);
       toast.success(`Reporte PDF generado: ${filename}`);
     } catch (err) {
       console.error(err);
@@ -283,10 +449,21 @@ export default function EnvironmentView() {
             </h1>
             <p className="text-sm text-stone-500 mt-1">Estimación automática con costos unitarios de la base de datos <b>"Precios"</b></p>
           </div>
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 inline-block"></span>
-            BD Precios: conectada
-          </Badge>
+          <div className="flex items-center gap-3">
+            {autoSaveStatus !== 'idle' && (
+              <span className="text-xs text-stone-500 flex items-center gap-1.5">
+                {autoSaveStatus === 'saving' ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...</>
+                ) : (
+                  <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Guardado</>
+                )}
+              </span>
+            )}
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 inline-block"></span>
+              BD Precios: conectada
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -341,10 +518,10 @@ export default function EnvironmentView() {
                 <div className="space-y-2">
                   <Label className="text-stone-600">Tipo de proyecto</Label>
                   <div className="flex gap-2 p-1 bg-stone-100 rounded-xl">
-                    {['Remodelación', 'Ampliación', 'Construcción'].map(t => (
+                    {PROJECT_TYPES.map(t => (
                       <button
                         key={t}
-                        onClick={() => setProjectType(t as any)}
+                        onClick={() => setProjectType(t)}
                         className={cn("flex-1 py-2 text-sm rounded-lg transition-all", projectType === t ? "bg-white text-emerald-700 font-bold shadow-sm" : "text-stone-500 hover:text-stone-700")}
                       >
                         {t}
@@ -392,14 +569,10 @@ export default function EnvironmentView() {
               <CardContent className="p-6 space-y-5">
                 <div className="space-y-2">
                   <div className="flex flex-col gap-2 p-1 bg-stone-100 rounded-xl">
-                    {[
-                      { v: 'Pre-construcción', l: '📐 Pre-construcción' },
-                      { v: 'Construcción', l: '🏗️ Construcción' },
-                      { v: 'Concluido/Cierre', l: '✅ Concluido / Cierre' }
-                    ].map(t => (
+                    {STAGE_OPTIONS.map(t => (
                       <button
                         key={t.v}
-                        onClick={() => setStage(t.v as any)}
+                        onClick={() => setStage(t.v)}
                         className={cn("text-left px-4 py-3 text-sm rounded-lg transition-all", stage === t.v ? "bg-white text-emerald-700 font-bold shadow-sm" : "text-stone-500 hover:text-stone-700 hover:bg-stone-200/50")}
                       >
                         {t.l}
@@ -496,7 +669,7 @@ export default function EnvironmentView() {
                   </TableHeader>
                   <TableBody>
                     {filteredCatalog.map(item => {
-                      const isHumanRes = item.description.toLowerCase().includes('recurso humano');
+                      const isHumanRes = isHumanResourceItem(item);
                       const catColor = CATCOLOR[item.category] || '#64748b';
                       
                       return (
@@ -635,10 +808,84 @@ export default function EnvironmentView() {
                       <span className="text-sm font-bold text-stone-800">TOTAL PARAMÉTRICO</span>
                       <span className="text-xl font-black text-emerald-700">{formatCurrency(totalAmount)}</span>
                     </div>
+                    {environmentExportData.disbursementPlan && (
+                      <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                            Resumen ejecutivo del flujo
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {useCustomSummary && !isEditingSummary && (
+                              <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
+                                Personalizado
+                              </Badge>
+                            )}
+                            {!isEditingSummary ? (
+                              <button
+                                onClick={startEditingSummary}
+                                className="text-emerald-600 hover:text-emerald-800 transition-colors"
+                                title="Editar resumen"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {isEditingSummary ? (
+                          <div className="mt-2 space-y-2">
+                            <Textarea
+                              value={customSummaryText}
+                              onChange={(e) => setCustomSummaryText(e.target.value)}
+                              className="text-sm bg-white border-emerald-200 min-h-[80px] resize-y"
+                              placeholder="Escribe el resumen ejecutivo del flujo de erogaciones..."
+                            />
+                            <div className="flex items-center justify-between gap-2">
+                              {useCustomSummary && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={resetToAutoSummary}
+                                  className="text-xs text-stone-500 hover:text-stone-700 gap-1 h-7"
+                                >
+                                  <RotateCcw className="w-3 h-3" /> Restaurar automático
+                                </Button>
+                              )}
+                              <div className="flex gap-2 ml-auto">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={cancelEditSummary}
+                                  className="text-xs h-7 border-stone-300"
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={saveCustomSummary}
+                                  className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                                >
+                                  <Save className="w-3 h-3" /> Guardar
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-sm text-emerald-900 whitespace-normal">
+                            {displaySummaryText || 'Sin datos de flujo disponibles.'}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            <EnvironmentDisbursementPlanView
+              plan={environmentExportData.disbursementPlan!}
+              formatCurrency={formatCurrency}
+            />
             
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" className="gap-2 text-stone-600 border-stone-300" onClick={handleExportPDF}>
@@ -684,4 +931,3 @@ export default function EnvironmentView() {
     </div>
   );
 }
-

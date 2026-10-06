@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import type { Borders, Alignment } from 'exceljs';
+import type { EnvironmentDisbursementPlan } from './environment-erogations';
 
 export interface EnvironmentExportItem {
   id: string;
@@ -26,6 +27,9 @@ export interface EnvironmentExportData {
   totalAmount: number;
   items: EnvironmentExportItem[];
   summaryByCategory: Array<{ cat: string; v: number }>;
+  disbursementPlan?: EnvironmentDisbursementPlan;
+  /** Resumen ejecutivo personalizado por el usuario (sobreescribe el auto-generado) */
+  customSummaryText?: string;
 }
 
 export async function exportEnvironmentFormToExcel(data: EnvironmentExportData) {
@@ -364,6 +368,99 @@ export async function exportEnvironmentFormToExcel(data: EnvironmentExportData) 
     currentRow++;
   });
 
+  if (data.disbursementPlan) {
+    const cashSheet = workbook.addWorksheet('Plan Erogaciones', {
+      views: [{ showGridLines: true }],
+    });
+
+    cashSheet.columns = [
+      { key: 'mes', width: 14 },
+      { key: 'periodo', width: 18 },
+      { key: 'inmobiliario', width: 18 },
+      { key: 'equipo', width: 18 },
+      { key: 'rrhh', width: 18 },
+      { key: 'total', width: 20 },
+      { key: 'acumulado', width: 20 },
+    ];
+
+    cashSheet.mergeCells('A1:G2');
+    const cashTitle = cashSheet.getCell('A1');
+    cashTitle.value = 'PLAN DE EROGACIONES / FLUJO DE CAJA SSMA';
+    cashTitle.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFF' } };
+    cashTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_HEADER_PRIMARY } };
+    cashTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    let cashRow = 4;
+    const addCashMetaRow = (label: string, value: string) => {
+      cashSheet.mergeCells(`A${cashRow}:B${cashRow}`);
+      cashSheet.mergeCells(`C${cashRow}:G${cashRow}`);
+      const labelCell = cashSheet.getCell(`A${cashRow}`);
+      const valueCell = cashSheet.getCell(`C${cashRow}`);
+      labelCell.value = label;
+      valueCell.value = value;
+      labelCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '334155' } };
+      valueCell.font = { name: 'Calibri', size: 10, color: { argb: '1E293B' } };
+      labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_SUBHEADER } };
+      valueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF' } };
+      for (let col = 1; col <= 7; col++) {
+        cashSheet.getRow(cashRow).getCell(col).border = thinBorder;
+      }
+      cashRow++;
+    };
+
+    addCashMetaRow('Proyecto:', data.projectName || '—');
+    addCashMetaRow('Duración de obra:', `${data.disbursementPlan.durationMonths} meses`);
+    addCashMetaRow('Cobertura RRHH:', `${data.disbursementPlan.humanResMonths} meses`);
+    if (data.customSummaryText) {
+      addCashMetaRow('Resumen ejecutivo:', data.customSummaryText);
+    } else {
+      addCashMetaRow('Mes pico:', `${data.disbursementPlan.summary.peakMonthLabel} · ${data.disbursementPlan.summary.peakMonthTotal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}`);
+      addCashMetaRow('Peso Mes 1:', `${data.disbursementPlan.summary.firstMonthWeightPct.toFixed(1)}% del total`);
+    }
+
+    cashRow++;
+
+    const cashHeaders = ['Mes', 'Periodo', 'Inmobiliario', 'Equipo', 'RRHH', 'Total Mensual', 'Total Acumulado'];
+    cashHeaders.forEach((header, index) => {
+      const cell = cashSheet.getRow(cashRow).getCell(index + 1);
+      cell.value = header;
+      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_HEADER_SECONDARY } };
+      cell.alignment = index < 2
+        ? { horizontal: 'left', vertical: 'middle' }
+        : { horizontal: 'right', vertical: 'middle' };
+      cell.border = thinBorder;
+    });
+    cashSheet.getRow(cashRow).height = 24;
+    cashRow++;
+
+    data.disbursementPlan.rows.forEach((row, index) => {
+      const current = cashSheet.getRow(cashRow);
+      const fillArgb = index % 2 === 0 ? COLOR_ZEBRA_EVEN : 'FFFFFF';
+      current.getCell(1).value = row.monthLabel;
+      current.getCell(2).value = row.periodLabel;
+      current.getCell(3).value = row.inmobiliario;
+      current.getCell(4).value = row.equipo;
+      current.getCell(5).value = row.rrhh;
+      current.getCell(6).value = row.totalMonthly;
+      current.getCell(7).value = row.cumulativeTotal;
+
+      for (let col = 1; col <= 7; col++) {
+        const cell = current.getCell(col);
+        cell.border = thinBorder;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
+        cell.alignment = col <= 2
+          ? { horizontal: 'left', vertical: 'middle' }
+          : { horizontal: 'right', vertical: 'middle' };
+        if (col >= 3) {
+          cell.numFmt = '"$"#,##0.00';
+        }
+      }
+
+      cashRow++;
+    });
+  }
+
   // Generar archivo Excel en el navegador
   const cleanProjectName = (data.projectName || 'Proyecto')
     .replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -412,6 +509,8 @@ export function exportEnvironmentFormToPDF(data: EnvironmentExportData): string 
     totalAmount: data.totalAmount,
     summaryByCategory: data.summaryByCategory,
     currency: 'MXN',
+    disbursementPlan: data.disbursementPlan,
+    customSummaryText: data.customSummaryText,
   };
 
   return exportEnvironmentReportToPDF(items, meta);
