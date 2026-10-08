@@ -103,12 +103,26 @@ Write-Host "    Creando directorio vacio de uploads..."
 New-Item -ItemType Directory -Path "$distDir\uploads" -Force | Out-Null
 
 # Base de datos
-Write-Host "    Sincronizando esquema de base de datos..."
-node "$root\scripts\sync-db-schema.js"
-Write-Host "    Copiando plantilla de base de datos..."
+# IMPORTANTE: la BD real de desarrollo es prisma/db/custom.db (Prisma resuelve
+# rutas SQLite relativas a schema.prisma). La semilla se construye DESDE CERO con
+# el esquema completo de Prisma + catalogo + admin inicial. No se incluye
+# db/custom.db en el ZIP para no sobrescribir datos al actualizar una instalacion.
+Write-Host "    Generando DDL del esquema desde prisma/schema.prisma..."
+Push-Location $root
+try {
+    npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script -o scripts/db-schema.sql
+    if ($LASTEXITCODE -ne 0) { throw "prisma migrate diff fallo" }
+} finally { Pop-Location }
+
+Write-Host "    Copiando herramientas de base de datos..."
+New-Item -ItemType Directory -Path "$distDir\scripts" -Force | Out-Null
+Copy-Item "$root\scripts\db-tools.cjs" "$distDir\scripts\db-tools.cjs" -Force
+Copy-Item "$root\scripts\db-schema.sql" "$distDir\scripts\db-schema.sql" -Force
+
+Write-Host "    Construyendo base de datos semilla (esquema completo + catalogo + admin)..."
 New-Item -ItemType Directory -Path "$distDir\db" -Force | Out-Null
-Copy-Item "$root\db\custom.db" "$distDir\db\seed_custom.db" -Force
-Copy-Item "$root\db\custom.db" "$distDir\db\custom.db" -Force
+node "$root\scripts\build-seed-db.cjs" --source "$root\prisma\db\custom.db" --out "$distDir\db\seed_custom.db"
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: No se pudo generar la BD semilla" -ForegroundColor Red; exit 1 }
 
 # --- 4. Crear .env ------------------------------------------------------------
 Write-Host ""
@@ -169,6 +183,14 @@ if not exist "%DB_ABSOLUTE%" (
 
 set "DB_URL=%DB_ABSOLUTE:\=/%"
 set "DB_FINAL_URL=file:%DB_URL%"
+
+REM --- Asegura que el esquema de la BD este completo (tablas/columnas faltantes) ---
+node "%APP_DIR%\scripts\db-tools.cjs" migrate --quiet --db "%DB_ABSOLUTE%"
+if %errorlevel% neq 0 (
+    echo [ERROR] No se pudo actualizar el esquema de la base de datos.
+    pause
+    exit /b 1
+)
 
 REM --- Secreto de autenticacion: se genera una sola vez por instalacion ---
 set "AUTH_SECRET="
@@ -379,7 +401,8 @@ for /f "tokens=*" %%v in ('node -v') do set NODE_VER=%%v
 echo [OK] Node.js %NODE_VER% instalado correctamente.
 echo.
 
-for /f %%t in ('powershell -NoProfile -Command "(Get-Date).ToString(''yyyyMMdd_HHmmss'')"') do set "TS=%%t"
+cd /d "%~dp0"
+for /f %%t in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd_HHmmss')"') do set "TS=%%t"
 if "%TS%"=="" set "TS=%RANDOM%"
 
 if exist "db\custom.db" (
@@ -412,6 +435,23 @@ if exist "db\custom.db" (
     )
 )
 
+if not exist "db\custom.db" (
+    echo [ERROR] No se encontro la base de datos ni la plantilla db\seed_custom.db.
+    pause
+    exit /b 1
+)
+
+echo.
+echo ===================================================
+echo   Verificando esquema de base de datos...
+echo ===================================================
+node "%~dp0scripts\db-tools.cjs" ensure-admin --db "%~dp0db\custom.db"
+if %errorlevel% neq 0 (
+    echo [ERROR] No se pudo actualizar la base de datos.
+    pause
+    exit /b 1
+)
+
 echo.
 echo ===================================================
 echo   Creando Accesos Directos en el Escritorio...
@@ -430,9 +470,17 @@ echo   - Iniciar Low-Voltage Estimator   - Inicia la app en segundo plano
 echo   - Detener Low-Voltage Estimator   - Detiene la app limpiamente
 echo   - Abrir Low-Voltage Estimator     - Abre en navegador
 echo.
+echo Acceso inicial: admin.jose@empresa.com / AdminPassword123!
+echo Si olvida la contrasena del admin ejecute: Recuperar_Admin.bat
+echo.
 pause
 '@ | Set-Content "$distDir\install.bat" -Encoding ASCII
 Write-Host "    install.bat creado"
+
+if (Test-Path "$root\Recuperar_Admin.bat") {
+    Copy-Item "$root\Recuperar_Admin.bat" "$distDir\Recuperar_Admin.bat" -Force
+    Write-Host "    Recuperar_Admin.bat copiado"
+}
 
 # --- 9. Crear scripts Linux/macOS ---------------------------------------------
 Write-Host ""
@@ -460,6 +508,8 @@ export PORT="${PORT:-3000}"
 export NODE_ENV="${NODE_ENV:-production}"
 export HOSTNAME="${HOSTNAME:-0.0.0.0}"
 export DATABASE_URL="file:${DB_ABSOLUTE}"
+
+node "${SCRIPT_DIR}/scripts/db-tools.cjs" migrate --quiet --db "${DB_ABSOLUTE}" || { echo "[ERROR] No se pudo actualizar el esquema de la BD"; exit 1; }
 
 # Secreto de autenticacion unico por instalacion (se genera una sola vez)
 SECRET_FILE="${SCRIPT_DIR}/.auth-secret"
@@ -545,6 +595,12 @@ Aplicacion profesional para estimacion de presupuestos de instalaciones electric
 
 - Ubicacion: `db/custom.db` (SQLite)
 - Respaldos automaticos al actualizar: `db/custom.db.bak_*`
+- El esquema se actualiza automaticamente en cada inicio (`scripts/db-tools.cjs migrate`).
+
+## Acceso inicial y recuperacion
+
+- Usuario inicial: `admin.jose@empresa.com` / `AdminPassword123!` (cambiela tras el primer acceso).
+- Si pierde el acceso de administrador: doble clic en `Recuperar_Admin.bat`.
 '@ | Set-Content "$distDir\README.md" -Encoding UTF8
 
 # --- 11. Crear el ZIP ----------------------------------------------------------
@@ -554,7 +610,25 @@ $sizeBeforeMB = [math]::Round((Get-ChildItem $distDir -Recurse | Measure-Object 
 Write-Host "    Tamano del paquete sin comprimir: $sizeBeforeMB MB"
 
 if (Test-Path $zipOut) { Remove-Item $zipOut -Force }
-Compress-Archive -Path "$distDir\*" -DestinationPath $zipOut -Force
+# ZIP con System.IO.Compression: rutas con '/', compatible con el Explorador de
+# Windows y tolerante a archivos abiertos por antivirus/indexador (FileShare).
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::Open($zipOut, 'Create')
+try {
+    $base = (Resolve-Path $distDir).Path.TrimEnd('\')
+    Get-ChildItem $distDir -Recurse -File -Force | ForEach-Object {
+        $name = $_.FullName.Substring($base.Length + 1).Replace('\', '/')
+        $entry = $zip.CreateEntry($name, [System.IO.Compression.CompressionLevel]::Optimal)
+        $es = $entry.Open()
+        try {
+            $fs = New-Object System.IO.FileStream($_.FullName, 'Open', 'Read', 'ReadWrite,Delete')
+            try { $fs.CopyTo($es) } finally { $fs.Dispose() }
+        } finally { $es.Dispose() }
+    }
+} finally { $zip.Dispose() }
+$check = [System.IO.Compression.ZipFile]::OpenRead($zipOut); $entries = $check.Entries.Count; $check.Dispose()
+Write-Host "    Entradas en ZIP: $entries"
 $zipSizeMB = [math]::Round((Get-Item $zipOut).Length / 1MB, 1)
 
 Write-Host ""
