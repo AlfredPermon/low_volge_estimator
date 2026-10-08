@@ -32,12 +32,37 @@ if not exist "%DB_ABSOLUTE%" (
 set "DB_URL=%DB_ABSOLUTE:\=/%"
 set "DB_FINAL_URL=file:%DB_URL%"
 
+REM --- Secreto de autenticacion: se genera una sola vez por instalacion ---
+set "AUTH_SECRET="
+if exist "%APP_DIR%\.auth-secret" set /p AUTH_SECRET=<"%APP_DIR%\.auth-secret"
+if not defined AUTH_SECRET (
+    for /f %%s in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%APP_DIR%\gen-secret.ps1"') do set "AUTH_SECRET=%%s"
+    if not defined AUTH_SECRET (
+        echo [ERROR] No se pudo generar el secreto de autenticacion.
+        pause
+        exit /b 1
+    )
+    echo !AUTH_SECRET!> "%APP_DIR%\.auth-secret"
+)
+set "AUTH_URL=http://localhost:3000"
+
 (
 echo PORT=3000
 echo HOSTNAME=0.0.0.0
 echo NODE_ENV=production
 echo DATABASE_URL=%DB_FINAL_URL%
+echo BETTER_AUTH_SECRET=!AUTH_SECRET!
+echo BETTER_AUTH_URL=%AUTH_URL%
+echo NEXT_PUBLIC_BETTER_AUTH_URL=%AUTH_URL%
 ) > "%APP_DIR%\.env"
+
+set "PORT=3000"
+set "HOSTNAME=0.0.0.0"
+set "NODE_ENV=production"
+set "DATABASE_URL=%DB_FINAL_URL%"
+set "BETTER_AUTH_SECRET=!AUTH_SECRET!"
+set "BETTER_AUTH_URL=%AUTH_URL%"
+set "NEXT_PUBLIC_BETTER_AUTH_URL=%AUTH_URL%"
 
 echo [OK] Puerto     : 3000
 echo [OK] Base datos : %DB_FINAL_URL%

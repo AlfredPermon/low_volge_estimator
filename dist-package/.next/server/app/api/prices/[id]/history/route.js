@@ -1,6 +1,13 @@
 var R=require("../../../../../chunks/[turbopack]_runtime.js")("server/app/api/prices/[id]/history/route.js")
-R.c("server/chunks/[root-of-the-server]__13hflcl._.js")
-R.c("server/chunks/[root-of-the-server]__0xuaoik._.js")
+R.c("server/chunks/[root-of-the-server]__19ennus._.js")
+R.c("server/chunks/node_modules_next_1_14bcs._.js")
+R.c("server/chunks/0n2c_@better-auth_core_dist_0vhzrw9._.js")
+R.c("server/chunks/node_modules_next_dist_1_lpwll._.js")
+R.c("server/chunks/node_modules_0gvfct3._.js")
+R.c("server/chunks/node_modules_zod_v4_066ngr7._.js")
+R.c("server/chunks/[root-of-the-server]__1r01cl_._.js")
+R.c("server/chunks/[root-of-the-server]__0wswzty._.js")
+R.c("server/chunks/0n2c_@better-auth_kysely-adapter_dist_index_mjs_0dw-u-3._.js")
 R.c("server/chunks/_next-internal_server_app_api_prices_[id]_history_route_actions_189kmei.js")
-R.m(14939)
-module.exports=R.m(14939).exports
+R.m(514939)
+module.exports=R.m(514939).exports

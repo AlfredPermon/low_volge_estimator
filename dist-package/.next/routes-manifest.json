@@ -23,6 +23,14 @@
   },
   "dynamicRoutes": [
     {
+      "page": "/api/auth/[...all]",
+      "regex": "^/api/auth/(.+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPall": "nxtPall"
+      },
+      "namedRegex": "^/api/auth/(?<nxtPall>.+?)(?:/)?$"
+    },
+    {
       "page": "/api/estimates/[id]",
       "regex": "^/api/estimates/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -77,6 +85,14 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/schedule/blockers/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/schedule/engineering/[id]",
+      "regex": "^/api/schedule/engineering/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/schedule/engineering/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/api/schedule/engineering/[id]/download",
@@ -147,16 +163,22 @@
       "namedRegex": "^/api/auth/me(?:/)?$"
     },
     {
-      "page": "/api/auth/seed-admin",
-      "regex": "^/api/auth/seed\\-admin(?:/)?$",
+      "page": "/api/custom-fields",
+      "regex": "^/api/custom\\-fields(?:/)?$",
       "routeKeys": {},
-      "namedRegex": "^/api/auth/seed\\-admin(?:/)?$"
+      "namedRegex": "^/api/custom\\-fields(?:/)?$"
     },
     {
       "page": "/api/estimates",
       "regex": "^/api/estimates(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/estimates(?:/)?$"
+    },
+    {
+      "page": "/api/notifications/teams",
+      "regex": "^/api/notifications/teams(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/notifications/teams(?:/)?$"
     },
     {
       "page": "/api/prices",

@@ -21,6 +21,16 @@ export NODE_ENV="${NODE_ENV:-production}"
 export HOSTNAME="${HOSTNAME:-0.0.0.0}"
 export DATABASE_URL="file:${DB_ABSOLUTE}"
 
+# Secreto de autenticacion unico por instalacion (se genera una sola vez)
+SECRET_FILE="${SCRIPT_DIR}/.auth-secret"
+if [ ! -s "${SECRET_FILE}" ]; then
+    node -e "process.stdout.write(require('crypto').randomBytes(48).toString('hex'))" > "${SECRET_FILE}"
+    chmod 600 "${SECRET_FILE}"
+fi
+export BETTER_AUTH_SECRET="$(cat "${SECRET_FILE}")"
+export BETTER_AUTH_URL="http://localhost:${PORT}"
+export NEXT_PUBLIC_BETTER_AUTH_URL="${BETTER_AUTH_URL}"
+
 echo "[OK] Puerto     : $PORT"
 echo "[OK] Base datos : $DATABASE_URL"
 echo ""

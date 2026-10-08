@@ -113,12 +113,24 @@ Copy-Item "$root\db\custom.db" "$distDir\db\custom.db" -Force
 # --- 4. Crear .env ------------------------------------------------------------
 Write-Host ""
 Write-Host "[4] Creando .env..." -ForegroundColor Yellow
+# El secreto de autenticacion NO se incluye en el paquete: se genera de forma
+# aleatoria y unica en el primer arranque (ver gen-secret.ps1 / start.bat).
 @"
 PORT=3000
 HOSTNAME=0.0.0.0
 NODE_ENV=production
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
 "@ | Set-Content "$distDir\.env" -Encoding UTF8
 Write-Host "    .env creado"
+
+@'
+# gen-secret.ps1 - Genera un secreto hexadecimal criptograficamente seguro (96 chars)
+$b = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($b)
+[BitConverter]::ToString($b).Replace('-', '').ToLower()
+'@ | Set-Content "$distDir\gen-secret.ps1" -Encoding UTF8
 
 # --- 5. Crear start.bat --------------------------------------------------------
 Write-Host ""
@@ -158,12 +170,37 @@ if not exist "%DB_ABSOLUTE%" (
 set "DB_URL=%DB_ABSOLUTE:\=/%"
 set "DB_FINAL_URL=file:%DB_URL%"
 
+REM --- Secreto de autenticacion: se genera una sola vez por instalacion ---
+set "AUTH_SECRET="
+if exist "%APP_DIR%\.auth-secret" set /p AUTH_SECRET=<"%APP_DIR%\.auth-secret"
+if not defined AUTH_SECRET (
+    for /f %%s in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%APP_DIR%\gen-secret.ps1"') do set "AUTH_SECRET=%%s"
+    if not defined AUTH_SECRET (
+        echo [ERROR] No se pudo generar el secreto de autenticacion.
+        pause
+        exit /b 1
+    )
+    echo !AUTH_SECRET!> "%APP_DIR%\.auth-secret"
+)
+set "AUTH_URL=http://localhost:3000"
+
 (
 echo PORT=3000
 echo HOSTNAME=0.0.0.0
 echo NODE_ENV=production
 echo DATABASE_URL=%DB_FINAL_URL%
+echo BETTER_AUTH_SECRET=!AUTH_SECRET!
+echo BETTER_AUTH_URL=%AUTH_URL%
+echo NEXT_PUBLIC_BETTER_AUTH_URL=%AUTH_URL%
 ) > "%APP_DIR%\.env"
+
+set "PORT=3000"
+set "HOSTNAME=0.0.0.0"
+set "NODE_ENV=production"
+set "DATABASE_URL=%DB_FINAL_URL%"
+set "BETTER_AUTH_SECRET=!AUTH_SECRET!"
+set "BETTER_AUTH_URL=%AUTH_URL%"
+set "NEXT_PUBLIC_BETTER_AUTH_URL=%AUTH_URL%"
 
 echo [OK] Puerto     : 3000
 echo [OK] Base datos : %DB_FINAL_URL%
@@ -424,6 +461,16 @@ export NODE_ENV="${NODE_ENV:-production}"
 export HOSTNAME="${HOSTNAME:-0.0.0.0}"
 export DATABASE_URL="file:${DB_ABSOLUTE}"
 
+# Secreto de autenticacion unico por instalacion (se genera una sola vez)
+SECRET_FILE="${SCRIPT_DIR}/.auth-secret"
+if [ ! -s "${SECRET_FILE}" ]; then
+    node -e "process.stdout.write(require('crypto').randomBytes(48).toString('hex'))" > "${SECRET_FILE}"
+    chmod 600 "${SECRET_FILE}"
+fi
+export BETTER_AUTH_SECRET="$(cat "${SECRET_FILE}")"
+export BETTER_AUTH_URL="http://localhost:${PORT}"
+export NEXT_PUBLIC_BETTER_AUTH_URL="${BETTER_AUTH_URL}"
+
 echo "[OK] Puerto     : $PORT"
 echo "[OK] Base datos : $DATABASE_URL"
 echo ""
@@ -507,7 +554,7 @@ $sizeBeforeMB = [math]::Round((Get-ChildItem $distDir -Recurse | Measure-Object 
 Write-Host "    Tamano del paquete sin comprimir: $sizeBeforeMB MB"
 
 if (Test-Path $zipOut) { Remove-Item $zipOut -Force }
-tar -a -cf "$zipOut" -C "$distDir" .
+Compress-Archive -Path "$distDir\*" -DestinationPath $zipOut -Force
 $zipSizeMB = [math]::Round((Get-Item $zipOut).Length / 1MB, 1)
 
 Write-Host ""
