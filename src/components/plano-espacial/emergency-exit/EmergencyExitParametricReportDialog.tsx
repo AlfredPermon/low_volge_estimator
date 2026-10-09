@@ -34,6 +34,9 @@ import {
   EmergencySignagePdfMetadata,
 } from '@/lib/pdf-export';
 import { EmailEmergencyExitDialog } from './EmailEmergencyExitDialog';
+import { exportEmergencyFloorplanToPDF } from '@/lib/pdf-emergency-floorplan-export';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Map, ChevronDown } from 'lucide-react';
 
 export interface EmergencyExitParametricItem {
   sku: string;
@@ -69,9 +72,11 @@ export function EmergencyExitParametricReportDialog({
   const revision = useEstimateStore((s) => s.revision);
   const responsible = useEstimateStore((s) => s.responsible);
   const riskResponsable = useEstimateStore((s) => s.riskResponsable);
+  const floorplanConfig = useEstimateStore((s) => s.floorplanConfig);
   const currentDate = new Date().toLocaleDateString('es-MX');
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [isExportingFloorplan, setIsExportingFloorplan] = useState(false);
 
   const totalCount = devices.length;
   const validCount = devices.filter((d) => d.isValidLocation).length;
@@ -114,6 +119,24 @@ export function EmergencyExitParametricReportDialog({
     } catch (e) {
       console.error('Error al exportar PDF:', e);
       toast.error('Error al generar el reporte PDF');
+    }
+  };
+
+  const handleExportFloorplan = async (includeRadii: boolean) => {
+    try {
+      setIsExportingFloorplan(true);
+      await exportEmergencyFloorplanToPDF(floorplanConfig, devices, {
+        includeRadii,
+        projectName: projectName || estimateName || 'Proyecto',
+        floorplanName: floorplanConfig.name
+      });
+      toast.success('Plano de Señalética de Emergencia descargado correctamente');
+    } catch (e: any) {
+      console.error('Error al exportar Plano PDF:', e);
+      if (e.message) toast.error(e.message);
+      else toast.error('Error al generar el Plano PDF');
+    } finally {
+      setIsExportingFloorplan(false);
     }
   };
 
@@ -387,6 +410,41 @@ export function EmergencyExitParametricReportDialog({
               >
                 <Mail className="w-5 h-5 text-white" /> E-MAIL
               </Button>
+
+              {/* Menú Desplegable Sembrado Señaléticas */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="default"
+                    disabled={isExportingFloorplan}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold gap-2 shadow-lg shadow-emerald-900/40 rounded-xl px-5"
+                  >
+                    <Map className="w-5 h-5" /> 
+                    {isExportingFloorplan ? 'Exportando...' : 'Sembrado Señaléticas'}
+                    <ChevronDown className="w-4 h-4 ml-1 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 bg-slate-900 border-slate-700 text-stone-100">
+                  <DropdownMenuItem 
+                    className="focus:bg-slate-800 cursor-pointer py-2.5" 
+                    onClick={() => handleExportFloorplan(false)}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold">Plano Limpio (Estándar)</span>
+                      <span className="text-xs text-stone-400">Exportar solo iconos de señales.</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="focus:bg-slate-800 cursor-pointer py-2.5"
+                    onClick={() => handleExportFloorplan(true)}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold">Incluir Radio Visual On</span>
+                      <span className="text-xs text-stone-400">Mostrar distancia geométrica S.</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Botón PDF / Imprimir */}
               <Button
