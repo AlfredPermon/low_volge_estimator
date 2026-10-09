@@ -7,7 +7,7 @@ const PUBLIC_PATHS = [
   '/api/auth',
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Permitir archivos estáticos de Next.js, favicons e imágenes
