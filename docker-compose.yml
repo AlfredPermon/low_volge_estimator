@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    # No mapeamos el puerto 3000 al host para forzar el uso de HTTPS a través de Caddy
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/prisma/dev.db
+      # En producción, Better Auth necesita una URL absoluta
+      - BETTER_AUTH_URL=https://${DOMAIN:-localhost}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+    volumes:
+      - db-data:/app/prisma
+    env_file:
+      - .env.docker
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  # Volumen para persistir la base de datos SQLite
+  db-data:
+  # Volúmenes para persistir los certificados generados por Caddy
+  caddy_data:
+  caddy_config:

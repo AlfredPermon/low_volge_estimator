@@ -1,0 +1,16 @@
+{
+    # tls internal instruye a Caddy a generar su propia CA (Autoridad Certificadora)
+    # y emitir certificados autofirmados válidos internamente. 
+    # Es ideal para redes locales / IP / dominios internos sin acceso a Let's Encrypt.
+}
+
+{$DOMAIN:localhost} {
+    tls internal
+
+    reverse_proxy web:3000 {
+        header_up Host {host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
