@@ -86,7 +86,7 @@ echo   INSTALACION COMPLETADA CON EXITO!
 echo ===================================================
 echo.
 echo Accesos directos creados en tu Escritorio:
-echo   - Iniciar Low-Voltage Estimator   - Inicia la app en segundo plano
+echo   - Iniciar Low-Voltage Estimator   - Inicia la app (minimizado)
 echo   - Detener Low-Voltage Estimator   - Detiene la app limpiamente
 echo   - Abrir Low-Voltage Estimator     - Abre en navegador
 echo.

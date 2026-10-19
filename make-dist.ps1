@@ -236,16 +236,6 @@ pause
 '@ | Set-Content "$distDir\start.bat" -Encoding ASCII
 Write-Host "    start.bat creado"
 
-# Crear Iniciar_Silencioso.vbs
-@'
-Set WshShell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
-WshShell.CurrentDirectory = scriptDir
-WshShell.Run """" & scriptDir & "\start.bat""", 0, False
-'@ | Set-Content "$distDir\Iniciar_Silencioso.vbs" -Encoding UTF8
-Write-Host "    Iniciar_Silencioso.vbs creado"
-
 # --- 6. Crear stop.bat, Detener.bat y Abrir_Navegador.bat -----------------------
 Write-Host ""
 Write-Host "[6] Creando stop.bat, Detener.bat y Abrir_Navegador.bat..." -ForegroundColor Yellow
@@ -335,11 +325,11 @@ $WshShell = New-Object -ComObject WScript.Shell
 # 1. Iniciar
 $lnkStartPath = Join-Path $desktopPath "Iniciar Low-Voltage Estimator.lnk"
 $shortcutStart = $WshShell.CreateShortcut($lnkStartPath)
-$shortcutStart.TargetPath = "wscript.exe"
-$shortcutStart.Arguments = "`"$scriptDir\Iniciar_Silencioso.vbs`""
+$shortcutStart.TargetPath = "$scriptDir\start.bat"
 $shortcutStart.WorkingDirectory = $scriptDir
+$shortcutStart.WindowStyle = 7
 if (Test-Path "$iconsDir\start.ico") { $shortcutStart.IconLocation = "$iconsDir\start.ico, 0" }
-$shortcutStart.Description = "Iniciar Low-Voltage Estimator en segundo plano"
+$shortcutStart.Description = "Iniciar Low-Voltage Estimator"
 $shortcutStart.Save()
 
 # 2. Detener
@@ -466,7 +456,7 @@ echo   INSTALACION COMPLETADA CON EXITO!
 echo ===================================================
 echo.
 echo Accesos directos creados en tu Escritorio:
-echo   - Iniciar Low-Voltage Estimator   - Inicia la app en segundo plano
+echo   - Iniciar Low-Voltage Estimator   - Inicia la app (minimizado)
 echo   - Detener Low-Voltage Estimator   - Detiene la app limpiamente
 echo   - Abrir Low-Voltage Estimator     - Abre en navegador
 echo.
@@ -580,14 +570,13 @@ Aplicacion profesional para estimacion de presupuestos de instalaciones electric
 
 ## Accesos Directos creados en el Escritorio
 
-- **Iniciar Low-Voltage Estimator**: Ejecuta la app en segundo plano sin ventana de consola y abre el navegador en `http://localhost:3000`.
+- **Iniciar Low-Voltage Estimator**: Ejecuta la app (minimizado) y abre el navegador en `http://localhost:3000`.
 - **Detener Low-Voltage Estimator**: Detiene limpiamente la aplicacion y libera el puerto.
 - **Abrir Low-Voltage Estimator**: Abre el navegador en `http://localhost:3000` si la app ya esta iniciada.
 
 ## Uso desde la carpeta
 
-- **Iniciar en segundo plano**: Doble clic en `Iniciar_Silencioso.vbs`.
-- **Iniciar con ventana de consola**: Doble clic en `start.bat`.
+- **Iniciar**: Doble clic en `start.bat`.
 - **Detener**: Doble clic en `Detener.bat` o `stop.bat`.
 - **Recrear Accesos Directos**: Doble clic en `Crear_Accesos_Directos.bat`.
 

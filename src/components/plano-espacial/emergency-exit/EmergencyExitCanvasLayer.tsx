@@ -28,6 +28,7 @@ interface EmergencyExitCanvasLayerProps {
   onSelectDevice?: (device: EmergencySignDevice) => void;
   onRemoveDevice?: (id: string) => void;
   onMouseDownMarker?: (device: EmergencySignDevice, e: React.MouseEvent) => void;
+  canMoveDevices?: boolean;
 }
 
 const ICON_BASE_SIZE_PX = 72;
@@ -219,12 +220,13 @@ function getDirectionAngle(dir?: ArrowDirection): number {
 export function EmergencyExitCanvasLayer({
   devices,
   scaleMetersPerPx = 0.05,
-  showCoverageDistances = true,
+  showCoverageDistances,
   currentFloorplanId,
   selectedId,
   onSelectDevice,
   onRemoveDevice,
   onMouseDownMarker,
+  canMoveDevices = true,
 }: EmergencyExitCanvasLayerProps) {
   const store = useEmergencyStore();
 
@@ -234,20 +236,20 @@ export function EmergencyExitCanvasLayer({
   const [rotatingDeviceId, setRotatingDeviceId] = useState<string | null>(null);
   const [currentAngle, setCurrentAngle] = useState<number>(0);
   const initialAngleRef = useRef<number>(0);
+  const currentAngleRef = useRef<number>(0);
 
   const [resizingDeviceId, setResizingDeviceId] = useState<string | null>(null);
   const [currentScale, setCurrentScale] = useState<number>(1.0);
   const initialScaleRef = useRef<number>(1.0);
+  const currentScaleRef = useRef<number>(1.0);
   const resizeStartDistRef = useRef<number>(40);
 
   // Dragging state for left-click movement
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isActuallyDragging, setIsActuallyDragging] = useState<boolean>(false);
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; devX: number; devY: number }>({
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number }>({
     mouseX: 0,
     mouseY: 0,
-    devX: 0,
-    devY: 0,
   });
 
   const displayRadii = showCoverageDistances ?? store.showCoverageDistances;
@@ -262,6 +264,7 @@ export function EmergencyExitCanvasLayer({
 
     const startDeg = dev.arrowAngle ?? getDirectionAngle(dev.arrowDirection);
     initialAngleRef.current = startDeg;
+    currentAngleRef.current = startDeg;
     setCurrentAngle(startDeg);
     setRotatingDeviceId(dev.id);
 
@@ -278,6 +281,7 @@ export function EmergencyExitCanvasLayer({
 
     const startSc = dev.customScale || 1.0;
     initialScaleRef.current = startSc;
+    currentScaleRef.current = startSc;
     setCurrentScale(startSc);
 
     const el = document.getElementById(`emg_marker_${dev.id}`);
@@ -301,7 +305,7 @@ export function EmergencyExitCanvasLayer({
 
   // ─── 3. Left-Click Dragging Handler ──────────────────────────────────────
   const handleStartDrag = (dev: EmergencySignDevice, e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Left-click only
+    if (e.button !== 0 || !canMoveDevices) return; // Left-click only in select mode
     // Don't drag if user clicked on interactive buttons inside popover or corner handles
     if (
       (e.target as HTMLElement)?.closest('button') ||
@@ -320,8 +324,6 @@ export function EmergencyExitCanvasLayer({
     dragStartRef.current = {
       mouseX: e.clientX,
       mouseY: e.clientY,
-      devX: dev.x,
-      devY: dev.y,
     };
   };
 
@@ -355,6 +357,7 @@ export function EmergencyExitCanvasLayer({
             }
           }
 
+          currentAngleRef.current = deg;
           setCurrentAngle(deg);
         }
       }
@@ -373,6 +376,7 @@ export function EmergencyExitCanvasLayer({
           let newSc = Number((initialScaleRef.current * scaleRatio).toFixed(2));
           newSc = Math.min(3.0, Math.max(0.4, newSc));
 
+          currentScaleRef.current = newSc;
           setCurrentScale(newSc);
         }
       }
@@ -387,10 +391,7 @@ export function EmergencyExitCanvasLayer({
           setIsActuallyDragging(true);
         }
 
-        const newX = Math.round(dragStartRef.current.devX + dx);
-        const newY = Math.round(dragStartRef.current.devY + dy);
-
-        store.updateEmergencyDevice(draggingId, { x: newX, y: newY }, scaleMetersPerPx);
+        // The parent owns position persistence so the floorplan and emergency stores stay synchronized.
       }
     };
 
@@ -406,9 +407,13 @@ export function EmergencyExitCanvasLayer({
       if (rotatingDeviceId) {
         e.preventDefault();
         e.stopPropagation();
-        store.updateEmergencyDevice(rotatingDeviceId, { arrowAngle: currentAngle }, scaleMetersPerPx);
+        store.updateEmergencyDevice(
+          rotatingDeviceId,
+          { arrowAngle: currentAngleRef.current },
+          scaleMetersPerPx
+        );
         setRotatingDeviceId(null);
-        toast.success(`🚨 Giro fijado en ${currentAngle}°`);
+        toast.success(`🚨 Giro fijado en ${currentAngleRef.current}°`);
       }
     };
 
@@ -419,9 +424,15 @@ export function EmergencyExitCanvasLayer({
       }
 
       if (resizingDeviceId) {
-        store.updateEmergencyDevice(resizingDeviceId, { customScale: currentScale }, scaleMetersPerPx);
+        store.updateEmergencyDevice(
+          resizingDeviceId,
+          { customScale: currentScaleRef.current },
+          scaleMetersPerPx
+        );
         setResizingDeviceId(null);
-        toast.success(`📏 Tamaño de icono actualizado (${(currentScale * 100).toFixed(0)}%)`);
+        toast.success(
+          `📏 Tamaño de icono actualizado (${(currentScaleRef.current * 100).toFixed(0)}%)`
+        );
       }
     };
 
@@ -431,6 +442,7 @@ export function EmergencyExitCanvasLayer({
         e.stopPropagation();
 
         if (rotatingDeviceId) {
+          currentAngleRef.current = initialAngleRef.current;
           store.updateEmergencyDevice(
             rotatingDeviceId,
             { arrowAngle: initialAngleRef.current },
@@ -441,6 +453,7 @@ export function EmergencyExitCanvasLayer({
         }
 
         if (resizingDeviceId) {
+          currentScaleRef.current = initialScaleRef.current;
           store.updateEmergencyDevice(
             resizingDeviceId,
             { customScale: initialScaleRef.current },
@@ -668,7 +681,7 @@ export function EmergencyExitCanvasLayer({
             {/* Tooltip Popover Glassmorphism (Desaparece al arrastrar/mover para no obstruir) */}
             {showPopover && (
               <div
-                className="absolute left-0 bottom-[36px] -translate-x-1/2 w-72 bg-stone-900/95 backdrop-blur-md text-stone-100 p-3 rounded-xl shadow-2xl border border-emerald-500/40 text-xs z-50 pointer-events-auto space-y-2 select-none"
+                className="absolute left-0 bottom-9 -translate-x-1/2 w-72 bg-stone-900/95 backdrop-blur-md text-stone-100 p-3 rounded-xl shadow-2xl border border-emerald-500/40 text-xs z-50 pointer-events-auto space-y-2 select-none"
                 onMouseEnter={() => setHoveredId(dev.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={(e) => e.stopPropagation()}
@@ -714,7 +727,7 @@ export function EmergencyExitCanvasLayer({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-stone-300 font-medium">Soporte / Material:</span>
-                    <span className="font-bold text-stone-200 truncate max-w-[140px]" title={dev.material}>
+                    <span className="font-bold text-stone-200 truncate max-w-35" title={dev.material}>
                       {dev.material.replace(/_/g, ' ')}
                     </span>
                   </div>

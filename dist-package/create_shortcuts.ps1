@@ -10,11 +10,11 @@ $WshShell = New-Object -ComObject WScript.Shell
 # 1. Iniciar
 $lnkStartPath = Join-Path $desktopPath "Iniciar Low-Voltage Estimator.lnk"
 $shortcutStart = $WshShell.CreateShortcut($lnkStartPath)
-$shortcutStart.TargetPath = "wscript.exe"
-$shortcutStart.Arguments = "`"$scriptDir\Iniciar_Silencioso.vbs`""
+$shortcutStart.TargetPath = "$scriptDir\start.bat"
 $shortcutStart.WorkingDirectory = $scriptDir
+$shortcutStart.WindowStyle = 7
 if (Test-Path "$iconsDir\start.ico") { $shortcutStart.IconLocation = "$iconsDir\start.ico, 0" }
-$shortcutStart.Description = "Iniciar Low-Voltage Estimator en segundo plano"
+$shortcutStart.Description = "Iniciar Low-Voltage Estimator"
 $shortcutStart.Save()
 
 # 2. Detener

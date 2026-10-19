@@ -1417,7 +1417,7 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                 Plano Espacial
               </Badge>
             </div>
-            <span className="text-base font-bold text-white truncate max-w-[280px] sm:max-w-[420px]">
+            <span className="text-base font-bold text-white truncate max-w-70 sm:max-w-105">
               {store.name || store.projectName || 'Clinica Ambulatoria'}
             </span>
           </div>
@@ -1493,7 +1493,7 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="p-3 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar">
+            <CardContent className="p-3 space-y-2 max-h-160 overflow-y-auto custom-scrollbar">
               {/* Nodo Raíz: Proyecto */}
               <div className="flex items-center justify-between p-2 rounded-lg bg-stone-100 border border-stone-200 font-bold text-xs text-stone-800">
                 <div className="flex items-center gap-2 min-w-0">
@@ -1650,7 +1650,7 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                                     : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
                                 }`}
                               >
-                                <span className="truncate max-w-[120px] font-medium" title={fp.name}>
+                                <span className="truncate max-w-30 font-medium" title={fp.name}>
                                   {fp.name}
                                 </span>
 
@@ -1883,8 +1883,8 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
               <div
                 className={
                   isCanvasFullscreen
-                    ? 'fixed inset-0 z-[9999] bg-stone-950/95 backdrop-blur-2xl p-4 flex flex-col h-screen w-screen overflow-hidden select-none'
-                    : 'relative w-full h-[540px] bg-stone-900 rounded-xl overflow-hidden border border-stone-800 shadow-inner select-none'
+                    ? 'fixed inset-0 z-9999 bg-stone-950/95 backdrop-blur-2xl p-4 flex flex-col h-screen w-screen overflow-hidden select-none'
+                    : 'relative w-full h-135 bg-stone-900 rounded-xl overflow-hidden border border-stone-800 shadow-inner select-none'
                 }
               >
                 {/* Botón flotante para Restablecer vista cuando está en pantalla completa */}
@@ -2740,6 +2740,11 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                         showCoverageDistances={emergencyStore.showCoverageDistances}
                         currentFloorplanId={config.id}
                         selectedId={selectedElement?.id}
+                        canMoveDevices={
+                          activeTool === 'select' ||
+                          activeTool === 'edit_pathway' ||
+                          emergencyStore.activeTool === 'SELECT'
+                        }
                         onMouseDownMarker={(dev, e) => {
                           if (activeTool === 'select' || activeTool === 'edit_pathway' || emergencyStore.activeTool === 'SELECT') {
                             const coords = getCanvasCoords(e);
@@ -3396,7 +3401,7 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
       </div>
 
       {/* ─── SECCIÓN OBLIGATORIA 3: BLOQUE RESALTADO DE GRAN TOTAL CONSOLIDADO ──────────────────── */}
-      <div className="bg-gradient-to-br from-stone-950 via-stone-900 to-emerald-950 text-white border-2 border-emerald-500/60 shadow-2xl p-6 rounded-2xl space-y-6 relative overflow-hidden">
+      <div className="bg-linear-to-br from-stone-950 via-stone-900 to-emerald-950 text-white border-2 border-emerald-500/60 shadow-2xl p-6 rounded-2xl space-y-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Sparkles className="w-64 h-64 text-emerald-400" />
         </div>

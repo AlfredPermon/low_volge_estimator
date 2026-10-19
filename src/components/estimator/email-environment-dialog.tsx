@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -196,16 +196,21 @@ export default function EmailEnvironmentDialog({
   const [bodyText, setBodyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isDownloadingAttachment, setIsDownloadingAttachment] = useState(false);
+  const wasOpenRef = useRef(false);
 
-  // Inicializar/restablecer cuerpo cuando cambian los datos o se abre el diálogo
+  // Inicializar el borrador al abrir, sin sobrescribir cambios durante la edición.
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       const defaultBody = buildDefaultEnvironmentEmailBody(data, downloadFormat);
       setBodyText(defaultBody);
-      if (data.responsibleEmail) {
-        setTo(data.responsibleEmail);
-      }
+      setTo(data.responsibleEmail || '');
+      setSubject(
+        `Estimación Paramétrica SSMA / Medio Ambiente | ${data.projectName || 'Proyecto'}${
+          data.regionName ? ` | Región ${data.regionName}` : ''
+        }`
+      );
     }
+    wasOpenRef.current = open;
   }, [open, data, downloadFormat]);
 
   const cleanProjectName = (data.projectName || 'Proyecto')
@@ -216,9 +221,12 @@ export default function EmailEnvironmentDialog({
   const pdfAttachmentName = `${cleanProjectName}_Parametrico_Medio_Ambiente.pdf`;
 
   const handleFormatChange = (fmt: DownloadFormatOption) => {
+    const previousDefaultBody = buildDefaultEnvironmentEmailBody(data, downloadFormat);
+    const nextDefaultBody = buildDefaultEnvironmentEmailBody(data, fmt);
     setDownloadFormat(fmt);
-    const newBody = buildDefaultEnvironmentEmailBody(data, fmt);
-    setBodyText(newBody);
+    setBodyText((currentBody) =>
+      currentBody === previousDefaultBody ? nextDefaultBody : currentBody
+    );
   };
 
   const handleResetBody = () => {
@@ -341,7 +349,7 @@ export default function EmailEnvironmentDialog({
           className="bg-white border border-emerald-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200"
         >
           {/* ══ HEADER DECORATIVO VERDE MEDIO AMBIENTE ════════════════════════ */}
-          <div className="shrink-0 bg-gradient-to-r from-[#043927] via-[#0e7c66] to-[#043927] px-6 py-4 sm:px-8 sm:py-5 text-white">
+          <div className="shrink-0 bg-linear-to-r from-[#043927] via-[#0e7c66] to-[#043927] px-6 py-4 sm:px-8 sm:py-5 text-white">
             <div className="flex items-center gap-4">
               {/* Ícono Eco */}
               <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner backdrop-blur-md">
@@ -406,7 +414,7 @@ export default function EmailEnvironmentDialog({
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0">
 
             {/* ── COLUMNA IZQUIERDA: Formulario + Selección de Formato ──────── */}
-            <div className="lg:w-[500px] xl:w-[540px] shrink-0 flex flex-col border-r border-stone-100 overflow-y-auto bg-stone-50/40">
+            <div className="lg:w-125 xl:w-135 shrink-0 flex flex-col border-r border-stone-100 overflow-y-auto bg-stone-50/40">
               <div className="p-5 sm:p-6 space-y-5 flex-1">
 
                 {/* Banner Informativo */}
@@ -592,7 +600,7 @@ export default function EmailEnvironmentDialog({
                       value={bodyText}
                       onChange={(e) => setBodyText(e.target.value)}
                       rows={9}
-                      className="w-full text-xs font-mono border-0 focus-visible:ring-0 p-3.5 resize-y min-h-[160px] max-h-[300px] text-stone-800 leading-relaxed"
+                      className="w-full text-xs font-mono border-0 focus-visible:ring-0 p-3.5 resize-y min-h-40 max-h-75 text-stone-800 leading-relaxed"
                       placeholder="Escribe o modifica el contenido del correo..."
                     />
                     <div className="bg-stone-50 border-t border-stone-100 px-3 py-1.5 flex items-center justify-between text-[11px] text-stone-400">
@@ -612,7 +620,7 @@ export default function EmailEnvironmentDialog({
                     Archivos listos para descargar y adjuntar
                   </Label>
 
-                  <div className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
+                  <div className="flex items-center gap-3 p-3.5 bg-linear-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
                     <div className="flex items-center gap-1.5 shrink-0">
                       {(downloadFormat === 'excel' || downloadFormat === 'both') && (
                         <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
@@ -717,13 +725,13 @@ export default function EmailEnvironmentDialog({
                       {(downloadFormat === 'excel' || downloadFormat === 'both') && (
                         <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-0.5 text-emerald-800">
                           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-[10px] font-medium truncate max-w-[220px]">{excelAttachmentName}</span>
+                          <span className="text-[10px] font-medium truncate max-w-55">{excelAttachmentName}</span>
                         </div>
                       )}
                       {(downloadFormat === 'pdf' || downloadFormat === 'both') && (
                         <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded px-2.5 py-0.5 text-red-800">
                           <FileText className="w-3.5 h-3.5 text-red-600" />
-                          <span className="text-[10px] font-medium truncate max-w-[220px]">{pdfAttachmentName}</span>
+                          <span className="text-[10px] font-medium truncate max-w-55">{pdfAttachmentName}</span>
                         </div>
                       )}
                     </div>

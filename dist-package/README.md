@@ -11,14 +11,13 @@ Aplicacion profesional para estimacion de presupuestos de instalaciones electric
 
 ## Accesos Directos creados en el Escritorio
 
-- **Iniciar Low-Voltage Estimator**: Ejecuta la app en segundo plano sin ventana de consola y abre el navegador en `http://localhost:3000`.
+- **Iniciar Low-Voltage Estimator**: Ejecuta la app (minimizado) y abre el navegador en `http://localhost:3000`.
 - **Detener Low-Voltage Estimator**: Detiene limpiamente la aplicacion y libera el puerto.
 - **Abrir Low-Voltage Estimator**: Abre el navegador en `http://localhost:3000` si la app ya esta iniciada.
 
 ## Uso desde la carpeta
 
-- **Iniciar en segundo plano**: Doble clic en `Iniciar_Silencioso.vbs`.
-- **Iniciar con ventana de consola**: Doble clic en `start.bat`.
+- **Iniciar**: Doble clic en `start.bat`.
 - **Detener**: Doble clic en `Detener.bat` o `stop.bat`.
 - **Recrear Accesos Directos**: Doble clic en `Crear_Accesos_Directos.bat`.
 

@@ -1,0 +1,38 @@
+# Dependencias y compilaciones locales
+node_modules
+.next
+out
+build
+dist
+dist-package
+*.tsbuildinfo
+
+# Control de versiones y editores
+.git
+.gitignore
+.vscode
+.trae
+.idea
+
+# Archivos de empaquetado y zips
+*.zip
+
+# Variables de entorno locales
+.env
+.env.*
+!.env.example
+
+# Bases de datos SQLite locales y respaldos
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+db-backup/
+
+# Archivos multimedia / temporales
+uploads/
+upload/
+storage/
+temp/
+tmp/
+*.log
