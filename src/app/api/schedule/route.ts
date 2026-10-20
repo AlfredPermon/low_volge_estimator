@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth";
 import { z } from "zod";
 import { generateScheduleActivitiesFromBudget } from "@/lib/schedule/schedule-mapper";
 import { createScheduleSchema, updateProcurementSchema, updateScheduleSchema } from "@/lib/schedule/schedule-validators";
@@ -24,6 +25,9 @@ function toDateOrNull(v: unknown): Date | null {
 
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, "CRONOGRAMA", "READ");
+    if (guard instanceof NextResponse) return guard;
+
     const { searchParams } = new URL(request.url);
     const estimateId = searchParams.get("estimateId");
     if (!estimateId) {
@@ -75,6 +79,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, "CRONOGRAMA", "WRITE", { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     const body = await request.json();
     const parsed = createScheduleSchema.safeParse(body);
     if (!parsed.success) {
@@ -119,34 +126,31 @@ export async function POST(request: NextRequest) {
       }))
     );
 
-    const created = await db.$transaction(async (tx) => {
-      const schedule = await tx.schedule.create({
-        data: {
-          estimateId: parsed.data.estimateId,
-          procurement: { create: {} },
-          activities: {
-            create: draftActivities.map((a) => ({
-              name: a.name,
-              system: a.system,
-              phase: a.phase,
-              assigneeRole: a.assigneeRole ?? "",
-              status: a.status ?? "Pendiente",
-              progress: typeof a.progress === "number" ? a.progress : 0,
-              dependsOn: a.dependsOn ?? "[]",
-              risk: a.risk ?? "",
-              notes: a.notes ?? "",
-            })),
-          },
+    const created = await db.schedule.create({
+      data: {
+        estimateId: parsed.data.estimateId,
+        procurement: { create: {} },
+        activities: {
+          create: draftActivities.map((a) => ({
+            name: a.name,
+            system: a.system,
+            phase: a.phase,
+            assigneeRole: a.assigneeRole ?? "",
+            status: a.status ?? "Pendiente",
+            progress: typeof a.progress === "number" ? a.progress : 0,
+            dependsOn: a.dependsOn ?? "[]",
+            risk: a.risk ?? "",
+            notes: a.notes ?? "",
+          })),
         },
-        include: {
-          activities: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
-          milestones: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
-          blockers: { orderBy: [{ createdAt: "desc" }] },
-          documents: { orderBy: [{ uploadedAt: "desc" }] },
-          procurement: true,
-        },
-      });
-      return schedule;
+      },
+      include: {
+        activities: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
+        milestones: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
+        blockers: { orderBy: [{ createdAt: "desc" }] },
+        documents: { orderBy: [{ uploadedAt: "desc" }] },
+        procurement: true,
+      },
     });
 
     const alerts = computeScheduleAlerts({
@@ -179,6 +183,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const guard = await requirePermission(request, "CRONOGRAMA", "WRITE", { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     const body = await request.json();
 
     const scheduleId = z.string().min(1).safeParse(body?.scheduleId);
@@ -206,24 +213,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const schedulePatch = schedulePatchResult.data;
-    const schedule = await db.$transaction(async (tx) => {
-      const updatedSchedule = await tx.schedule.update({
-        where: { id: scheduleId.data },
-        data: {
-          startDate: schedulePatch.startDate === undefined ? undefined : toDateOrNull(schedulePatch.startDate),
-          endDate: schedulePatch.endDate === undefined ? undefined : toDateOrNull(schedulePatch.endDate),
-          engineeringStatus: schedulePatch.engineeringStatus ?? undefined,
-          engineeringResponsible: schedulePatch.engineeringResponsible ?? undefined,
-          engineeringDueDate:
-            schedulePatch.engineeringDueDate === undefined ? undefined : toDateOrNull(schedulePatch.engineeringDueDate),
-          engineeringJustification: schedulePatch.engineeringJustification ?? undefined,
-          notes: schedulePatch.notes ?? undefined,
-        },
-      });
+    const updatedSchedule = await db.schedule.update({
+      where: { id: scheduleId.data },
+      data: {
+        startDate: schedulePatch.startDate === undefined ? undefined : toDateOrNull(schedulePatch.startDate),
+        endDate: schedulePatch.endDate === undefined ? undefined : toDateOrNull(schedulePatch.endDate),
+        engineeringStatus: schedulePatch.engineeringStatus ?? undefined,
+        engineeringResponsible: schedulePatch.engineeringResponsible ?? undefined,
+        engineeringDueDate:
+          schedulePatch.engineeringDueDate === undefined ? undefined : toDateOrNull(schedulePatch.engineeringDueDate),
+        engineeringJustification: schedulePatch.engineeringJustification ?? undefined,
+        notes: schedulePatch.notes ?? undefined,
+      },
+    });
 
-      if (procurementPatchResult) {
-        const p = procurementPatchResult.data;
-        await tx.procurementRecord.upsert({
+    if (procurementPatchResult) {
+      const p = procurementPatchResult.data;
+      await db.procurementRecord.upsert({
           where: { scheduleId: scheduleId.data },
           create: {
             scheduleId: scheduleId.data,
@@ -268,21 +274,18 @@ export async function PUT(request: NextRequest) {
             status: p.status ?? undefined,
             notes: p.notes ?? undefined,
           },
-        });
-      }
-
-      const full = await tx.schedule.findUnique({
-        where: { id: updatedSchedule.id },
-        include: {
-          activities: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
-          milestones: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
-          blockers: { orderBy: [{ createdAt: "desc" }] },
-          documents: { orderBy: [{ uploadedAt: "desc" }] },
-          procurement: true,
-        },
       });
+    }
 
-      return full;
+    const schedule = await db.schedule.findUnique({
+      where: { id: updatedSchedule.id },
+      include: {
+        activities: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
+        milestones: { orderBy: [{ phase: "asc" }, { createdAt: "asc" }] },
+        blockers: { orderBy: [{ createdAt: "desc" }] },
+        documents: { orderBy: [{ uploadedAt: "desc" }] },
+        procurement: true,
+      },
     });
 
     if (!schedule) {

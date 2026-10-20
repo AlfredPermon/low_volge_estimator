@@ -2,9 +2,13 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.argv[2] || 'admin.nuevo@empresa.com';
-  const password = process.argv[3] || 'AdminPass123!';
-  const name = process.argv[4] || 'Administrador Principal';
+  const email = (process.env.ADMIN_EMAIL || process.argv[2] || '').trim().toLowerCase();
+  const password = process.env.ADMIN_INITIAL_PASSWORD || process.argv[3] || '';
+  const name = (process.env.ADMIN_NAME || process.argv[4] || 'Administrador Principal').trim();
+
+  if (!email || !password) {
+    throw new Error('ADMIN_EMAIL y ADMIN_INITIAL_PASSWORD son obligatorios.');
+  }
 
   console.log(`\n⏳ Creando usuario administrador: ${email}...`);
 
@@ -41,13 +45,7 @@ async function main() {
         data: { role: 'admin', active: true },
       });
 
-      console.log(`\n🎉 ¡Usuario Administrador Creado Exitosamente!`);
-      console.log(`-----------------------------------------------`);
-      console.log(`👤 Nombre:     ${name}`);
-      console.log(`📧 Email:      ${email}`);
-      console.log(`🔑 Password:   ${password}`);
-      console.log(`🛡️  Rol:        admin (Acceso Total)`);
-      console.log(`-----------------------------------------------\n`);
+      console.log(`Administrador creado: ${email} (rol admin).`);
     }
   } catch (err) {
     console.error('❌ Error al crear usuario administrador:', err?.message || err);

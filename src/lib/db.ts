@@ -7,6 +7,12 @@ const globalForDb = globalThis as unknown as {
 };
 
 export async function ensureDatabaseSchema() {
+  // Turso is provisioned from prisma/turso_init.sql during deployment. Runtime
+  // DDL and PRAGMA checks are unsafe across stateless production instances.
+  if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
+    return;
+  }
+
   try {
     const tables = (await db.$queryRawUnsafe("SELECT name FROM sqlite_master WHERE type='table';")) as Array<{ name: string }>;
     const tableNames = new Set(Array.isArray(tables) ? tables.map((t) => t.name) : []);

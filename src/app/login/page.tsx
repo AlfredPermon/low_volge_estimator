@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap, ShieldCheck, Lock, Mail, Eye, EyeOff, Loader2, KeyRound, AlertCircle, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { authClient } from '@/lib/auth-client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +15,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [microsoftLoading, setMicrosoftLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -40,19 +38,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await authClient.signIn.email({
-        email: trimmedEmail,
-        password,
-        callbackURL: '/',
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          password,
+        }),
       });
+      const data = await response.json();
 
-      if (error) {
-        let friendlyError = 'Credenciales incorrectas o usuario no registrado.';
-        if (error.status === 401 || error.code === 'INVALID_EMAIL_OR_PASSWORD') {
-          friendlyError = 'El correo electrónico o la contraseña son incorrectos.';
-        } else if (error.message) {
-          friendlyError = error.message;
-        }
+      if (!response.ok) {
+        const friendlyError = data.error || 'Credenciales incorrectas o usuario no registrado.';
         setErrorMessage(friendlyError);
         toast.error(friendlyError);
         return;
@@ -68,31 +65,6 @@ export default function LoginPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMicrosoftLogin = async () => {
-    setErrorMessage(null);
-    setMicrosoftLoading(true);
-
-    try {
-      const { data, error } = await authClient.signIn.social({
-        provider: 'microsoft',
-        callbackURL: '/',
-      });
-
-      if (error) {
-        const msg = error.message || 'Error al iniciar sesión con Microsoft OAuth.';
-        setErrorMessage(msg);
-        toast.error(msg);
-        setMicrosoftLoading(false);
-      }
-    } catch (err: any) {
-      console.error('Error de OAuth Microsoft:', err);
-      const msg = 'Error al redirigir al proveedor de autenticación Microsoft.';
-      setErrorMessage(msg);
-      toast.error(msg);
-      setMicrosoftLoading(false);
     }
   };
 
@@ -134,38 +106,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Botón Principal: Microsoft OAuth (Outlook / Entra ID) */}
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={microsoftLoading || loading}
-                onClick={handleMicrosoftLogin}
-                className="w-full bg-stone-950 hover:bg-stone-800 border-stone-700/80 hover:border-blue-500/60 text-stone-100 font-semibold h-12 rounded-xl transition-all shadow-md flex items-center justify-center gap-3 text-xs sm:text-sm"
-              >
-                {microsoftLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
-                ) : (
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#F25022" d="M1 1h10v10H1z"/>
-                    <path fill="#7FBA00" d="M12 1h10v10H12z"/>
-                    <path fill="#00A4EF" d="M1 12h10v10H1z"/>
-                    <path fill="#FFB900" d="M12 12h10v10H12z"/>
-                  </svg>
-                )}
-                <span>Continuar con Outlook / Microsoft</span>
-              </Button>
-            </div>
-
-            {/* Separador Or */}
-            <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-stone-800 w-full" />
-              <span className="bg-stone-900 px-3 text-[11px] font-medium text-stone-500 uppercase tracking-wider shrink-0">
-                O acceder con correo
-              </span>
-            </div>
-
-            {/* Formulario Tradicional Email/Password */}
+            {/* Formulario de acceso administrado */}
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs font-semibold text-stone-300 flex items-center gap-1.5">
@@ -178,7 +119,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-stone-950 border-stone-800 text-white placeholder:text-stone-600 focus-visible:ring-emerald-500 h-11 text-sm rounded-xl"
-                  disabled={loading || microsoftLoading}
+                  disabled={loading}
                   required
                 />
               </div>
@@ -195,7 +136,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-stone-950 border-stone-800 text-white placeholder:text-stone-600 focus-visible:ring-emerald-500 h-11 pr-10 text-sm rounded-xl"
-                    disabled={loading || microsoftLoading}
+                    disabled={loading}
                     required
                   />
                   <button
@@ -210,7 +151,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                disabled={loading || microsoftLoading}
+                disabled={loading}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold h-11 shadow-lg shadow-emerald-600/20 rounded-xl gap-2 transition-all mt-2 text-sm"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}

@@ -15,6 +15,8 @@ export type UserRole =
   | 'Medio Ambiente'
   | 'Consultor';
 
+export const ADMIN_ROLE: UserRole = 'admin';
+
 /**
  * Mapa de normalización — convierte cualquier alias legacy al rol canónico.
  * El fallback es 'Consultor' (perfil más restrictivo) para perfiles desconocidos.

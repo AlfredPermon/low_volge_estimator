@@ -9,6 +9,9 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const guard = await requirePermission(request, "PRESUPUESTO", "WRITE", { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     await ensureDatabaseSchema();
     const { id } = await params;
     // BUDGET-PERSISTENCE: si el query es `?force=0` y ya existen lineItems

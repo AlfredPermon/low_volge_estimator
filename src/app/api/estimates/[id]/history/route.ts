@@ -15,6 +15,9 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const guard = await requirePermission(request, "PRESUPUESTO", "READ");
+    if (guard instanceof NextResponse) return guard;
+
     const { id } = await params;
 
     const estimate = await db.estimate.findUnique({ where: { id } });
@@ -38,6 +41,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const guard = await requirePermission(request, "PRESUPUESTO", "WRITE", { auditOnSuccess: true });
+    if (guard instanceof NextResponse) return guard;
+
     const { id } = await params;
     const body = await request.json();
 
@@ -58,7 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       data: {
         estimateId: id,
         changeType: parsed.data.changeType,
-        user: parsed.data.user || estimate.responsible || "Sistema / Usuario",
+        user: guard.user.name || guard.user.email,
         details: parsed.data.details,
       },
     });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureDatabaseSchema } from '@/lib/db';
-import { requirePermission, isAdminRole } from '@/lib/auth';
+import { hashPasswordAsync, requirePermission, isAdminRole } from '@/lib/auth';
 import { hashPassword } from 'better-auth/crypto';
 import { z } from 'zod';
 
@@ -117,30 +117,37 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (role !== undefined) updateData.role = role;
     if (active !== undefined) updateData.active = active;
 
-    // ── Cambio de contraseña: hashPassword de Better Auth es compatible con signIn.email() ──
+    // ── Cambio de contraseña: mantener ambos almacenes de credenciales sincronizados ──
     if (password && password.trim().length > 0) {
       const cleanPassword = password.trim();
-      const hashedPw = await hashPassword(cleanPassword);
+      const [passwordHash, hashedPw] = await Promise.all([
+        hashPasswordAsync(cleanPassword),
+        hashPassword(cleanPassword),
+      ]);
       const credentialAccount = await prisma.account.findFirst({
         where: { userId: id, providerId: 'credential' },
         select: { id: true },
       });
 
-      if (credentialAccount) {
-        await prisma.account.update({
-          where: { id: credentialAccount.id },
-          data: { password: hashedPw },
-        });
-      } else {
-        await prisma.account.create({
-          data: {
-            userId: id,
-            accountId: id,
-            providerId: 'credential',
-            password: hashedPw,
-          },
-        });
-      }
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id },
+          data: { passwordHash },
+        }),
+        credentialAccount
+          ? prisma.account.update({
+              where: { id: credentialAccount.id },
+              data: { password: hashedPw },
+            })
+          : prisma.account.create({
+              data: {
+                userId: id,
+                accountId: id,
+                providerId: 'credential',
+                password: hashedPw,
+              },
+            }),
+      ]);
     }
 
     const updatedUser = await prisma.user.update({

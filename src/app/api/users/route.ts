@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureDatabaseSchema } from '@/lib/db';
-import { requirePermission, auth } from '@/lib/auth';
+import { hashPassword } from 'better-auth/crypto';
+import { hashPasswordAsync, requirePermission } from '@/lib/auth';
 import { z } from 'zod';
 
 const createUserSchema = z.object({
@@ -108,14 +109,8 @@ export async function GET(request: NextRequest) {
 
 // ─── POST: Create a new user (Exclusivo Admin) ──────────────────────────────
 //
-// IMPORTANTE: Usa auth.api.signUpEmail() de Better Auth para registrar la
-// contraseña en la tabla Account (el mismo mecanismo que usa authClient.signIn.email()
-// en el login). NO usar prisma.user.create() con passwordHash propio — ese campo
-// no es reconocido por el flujo de autenticación de Better Auth.
-//
-// Flujo:
-//   1. auth.api.signUpEmail() → crea User + Account con la contraseña hasheada por BA
-//   2. prisma.user.update()   → aplica el rol y estado active del nuevo perfil
+// Mantiene ambos mecanismos de autenticación sincronizados:
+// User.passwordHash para el login interno y Account.password para Better Auth.
 
 export async function POST(request: NextRequest) {
   try {
@@ -147,31 +142,36 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanPassword = password.trim();
+    const [passwordHash, betterAuthHash] = await Promise.all([
+      hashPasswordAsync(cleanPassword),
+      hashPassword(cleanPassword),
+    ]);
 
-    // ── Registrar en Better Auth ─────────────────────────────────────────────
-    // Esto crea el registro User + Account con la contraseña hasheada de forma
-    // compatible con authClient.signIn.email() del frontend.
-    const signUpResult = await auth.api.signUpEmail({
-      body: { 
-        email: cleanEmail, 
-        password: cleanPassword, 
+    // Avoid interactive Prisma transactions: the libSQL HTTP adapter used by
+    // Turso does not support them reliably. The credential write immediately
+    // follows the user creation and uses the generated user identifier.
+    const newUser = await prisma.user.create({
+      data: {
+        email: cleanEmail,
         name,
+        passwordHash,
         role,
-        active
+        active,
+        emailVerified: true,
       },
     });
 
-    if (!signUpResult?.user) {
-      return NextResponse.json(
-        { error: 'Error al registrar el usuario en el sistema de autenticación' },
-        { status: 500 }
-      );
-    }
+    await prisma.account.create({
+      data: {
+        userId: newUser.id,
+        accountId: newUser.id,
+        providerId: 'credential',
+        password: betterAuthHash,
+      },
+    });
 
-    // ── Aplicar rol y estado active al usuario recién creado ─────────────────
-    const updatedUser = await prisma.user.update({
-      where: { email: cleanEmail },
-      data: { role, active },
+    const updatedUser = await prisma.user.findUniqueOrThrow({
+      where: { id: newUser.id },
       select: {
         id: true,
         email: true,

@@ -14,8 +14,8 @@
  *
  * Opciones:
  *   --db <ruta>        Ruta al archivo .db (por defecto: <app>/db/custom.db)
- *   --email <correo>   Correo del admin (por defecto: admin.jose@empresa.com)
- *   --password <pwd>   Contraseña del admin (por defecto: AdminPassword123!)
+ *   --email <correo>   Correo del admin (o ADMIN_EMAIL)
+ *   --password <pwd>   Contraseña del admin (o ADMIN_INITIAL_PASSWORD)
  *   --quiet            Solo imprime errores y cambios aplicados.
  */
 'use strict';
@@ -23,12 +23,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-
-const DEFAULT_ADMIN = {
-  email: 'admin.jose@empresa.com',
-  password: 'AdminPassword123!',
-  name: 'José Administrador',
-};
 
 // ─── Argumentos ───────────────────────────────────────────────────────────────
 function parseArgs(argv) {
@@ -209,16 +203,26 @@ async function upsertAdmin(db, { email, password, name }) {
   return user;
 }
 
-function printCredentials(email, password) {
+function printAdminProvisioned(email) {
   console.log('');
   console.log('===================================================');
-  console.log('  CREDENCIALES DE ADMINISTRADOR');
+  console.log('  ADMINISTRADOR APROVISIONADO');
   console.log('===================================================');
   console.log(`  Correo:     ${email}`);
-  console.log(`  Contraseña: ${password}`);
   console.log('===================================================');
-  console.log('  Cambie la contraseña después de iniciar sesión.');
   console.log('');
+}
+
+function getAdminCredentials() {
+  const email = (args.email || process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const password = args.password || process.env.ADMIN_INITIAL_PASSWORD || '';
+  const name = (process.env.ADMIN_NAME || 'Administrador Principal').trim();
+
+  if (!email || !password) {
+    throw new Error('ADMIN_EMAIL y ADMIN_INITIAL_PASSWORD son obligatorios para administrar credenciales.');
+  }
+
+  return { email, password, name };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -255,17 +259,16 @@ async function main() {
 
     await migrate(db);
 
-    const email = typeof args.email === 'string' ? args.email.toLowerCase().trim() : DEFAULT_ADMIN.email;
-    const password = typeof args.password === 'string' ? args.password : DEFAULT_ADMIN.password;
-
     if (command === 'reset-admin') {
-      await upsertAdmin(db, { email, password, name: DEFAULT_ADMIN.name });
-      printCredentials(email, password);
+      const credentials = getAdminCredentials();
+      await upsertAdmin(db, credentials);
+      printAdminProvisioned(credentials.email);
     } else if (command === 'ensure-admin') {
       const admins = await db.user.count({ where: { role: 'admin', active: true } });
       if (admins === 0) {
-        await upsertAdmin(db, { email, password, name: DEFAULT_ADMIN.name });
-        printCredentials(email, password);
+        const credentials = getAdminCredentials();
+        await upsertAdmin(db, credentials);
+        printAdminProvisioned(credentials.email);
       } else {
         log(`[OK] Administradores activos: ${admins}`);
       }

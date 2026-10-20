@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,9 @@ function safeBasename(name: string): string {
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const guard = await requirePermission(request, "CRONOGRAMA", "READ");
+    if (guard instanceof NextResponse) return guard;
+
     const { id } = await context.params;
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
