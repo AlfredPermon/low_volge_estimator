@@ -344,7 +344,17 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       fd.set("notes", meta.notes);
 
       const res = await fetch("/api/schedule/engineering/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error("No se pudo subir el PDF");
+      if (!res.ok) {
+        // Propagar el mensaje específico del servidor cuando exista.
+        let serverMsg = "";
+        try {
+          const errJson = await res.json();
+          serverMsg = typeof errJson?.error === "string" ? errJson.error : "";
+        } catch {
+          // respuesta sin JSON (p. ej. proxy o error de red)
+        }
+        throw new Error(serverMsg || `No se pudo subir el PDF (${res.status} ${res.statusText || ""})`.trim());
+      }
       const json = await res.json();
       const created: EngineeringDocument | null = json.data ?? null;
       const current = get().schedule;

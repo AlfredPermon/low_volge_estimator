@@ -242,7 +242,144 @@ export async function ensureDatabaseSchema() {
       }
     }
 
-    // 9. Sanitizar fechas con formato no ISO en Estimate para prevenir errores Prisma P2023
+    // 9. Tabla Schedule (cronograma) y relacionadas — idempotente.
+    //    Sin estas tablas, el alta de planos PDF en Ingeniería fallaba con
+    //    "No se pudo subir el PDF" en bases locales antiguas.
+    if (!tableNames.has('Schedule')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Schedule" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "estimateId" TEXT NOT NULL UNIQUE,
+          "startDate" DATETIME,
+          "endDate" DATETIME,
+          "engineeringStatus" TEXT NOT NULL DEFAULT '',
+          "engineeringResponsible" TEXT NOT NULL DEFAULT '',
+          "engineeringDueDate" DATETIME,
+          "engineeringJustification" TEXT NOT NULL DEFAULT '',
+          "notes" TEXT NOT NULL DEFAULT '',
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "Schedule_estimateId_fkey" FOREIGN KEY ("estimateId") REFERENCES "Estimate" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "Schedule_estimateId_key" ON "Schedule"("estimateId");');
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Schedule_createdAt_idx" ON "Schedule"("createdAt");');
+    }
+
+    if (!tableNames.has('ScheduleActivity')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ScheduleActivity" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "scheduleId" TEXT NOT NULL,
+          "name" TEXT NOT NULL,
+          "system" TEXT NOT NULL DEFAULT '',
+          "phase" INTEGER NOT NULL DEFAULT 0,
+          "startDate" DATETIME,
+          "endDate" DATETIME,
+          "assigneeRole" TEXT NOT NULL DEFAULT '',
+          "status" TEXT NOT NULL DEFAULT 'Pendiente',
+          "progress" REAL NOT NULL DEFAULT 0,
+          "dependsOn" TEXT NOT NULL DEFAULT '[]',
+          "risk" TEXT NOT NULL DEFAULT '',
+          "notes" TEXT NOT NULL DEFAULT '',
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "ScheduleActivity_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "ScheduleActivity_scheduleId_idx" ON "ScheduleActivity"("scheduleId");');
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "ScheduleActivity_phase_idx" ON "ScheduleActivity"("phase");');
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "ScheduleActivity_status_idx" ON "ScheduleActivity"("status");');
+    }
+
+    if (!tableNames.has('ScheduleMilestone')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ScheduleMilestone" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "scheduleId" TEXT NOT NULL,
+          "name" TEXT NOT NULL,
+          "phase" TEXT NOT NULL DEFAULT 'general',
+          "targetDate" DATETIME NOT NULL,
+          "responsible" TEXT NOT NULL DEFAULT '',
+          "notes" TEXT NOT NULL DEFAULT '',
+          "achievedAt" DATETIME,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "ScheduleMilestone_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "ScheduleMilestone_scheduleId_idx" ON "ScheduleMilestone"("scheduleId");');
+    }
+
+    if (!tableNames.has('ScheduleBlocker')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ScheduleBlocker" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "scheduleId" TEXT NOT NULL,
+          "activityId" TEXT NOT NULL DEFAULT '',
+          "reason" TEXT NOT NULL,
+          "severity" TEXT NOT NULL DEFAULT 'medium',
+          "responsible" TEXT NOT NULL DEFAULT '',
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "releasedAt" DATETIME,
+          "releaseNote" TEXT NOT NULL DEFAULT '',
+          CONSTRAINT "ScheduleBlocker_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "ScheduleBlocker_scheduleId_idx" ON "ScheduleBlocker"("scheduleId");');
+    }
+
+    if (!tableNames.has('EngineeringDocument')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "EngineeringDocument" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "scheduleId" TEXT NOT NULL,
+          "system" TEXT NOT NULL DEFAULT '',
+          "filename" TEXT NOT NULL,
+          "filepath" TEXT NOT NULL,
+          "revision" TEXT NOT NULL DEFAULT '',
+          "status" TEXT NOT NULL DEFAULT 'Cargado',
+          "uploadedBy" TEXT NOT NULL DEFAULT '',
+          "uploadedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "notes" TEXT NOT NULL DEFAULT '',
+          CONSTRAINT "EngineeringDocument_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "EngineeringDocument_scheduleId_idx" ON "EngineeringDocument"("scheduleId");');
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "EngineeringDocument_system_idx" ON "EngineeringDocument"("system");');
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "EngineeringDocument_status_idx" ON "EngineeringDocument"("status");');
+    }
+
+    if (!tableNames.has('ProcurementRecord')) {
+      await db.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ProcurementRecord" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "scheduleId" TEXT NOT NULL UNIQUE,
+          "comparativeRequestedAt" DATETIME,
+          "comparativeMinExpectedAt" DATETIME,
+          "comparativeReceivedAt" DATETIME,
+          "supplierName" TEXT NOT NULL DEFAULT '',
+          "quotedAmount" REAL NOT NULL DEFAULT 0,
+          "deliveryLeadTimeDays" INTEGER NOT NULL DEFAULT 0,
+          "paymentTerms" TEXT NOT NULL DEFAULT '',
+          "advancePercent" REAL NOT NULL DEFAULT 0,
+          "requisitionNumber" TEXT NOT NULL DEFAULT '',
+          "purchaseOrderNumber" TEXT NOT NULL DEFAULT '',
+          "advanceReleasedAt" DATETIME,
+          "supplierPurchaseStartedAt" DATETIME,
+          "materialsReceivedAt" DATETIME,
+          "releasedForInstallationAt" DATETIME,
+          "status" TEXT NOT NULL DEFAULT '',
+          "notes" TEXT NOT NULL DEFAULT '',
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "ProcurementRecord_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "ProcurementRecord_scheduleId_key" ON "ProcurementRecord"("scheduleId");');
+      await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "ProcurementRecord_status_idx" ON "ProcurementRecord"("status");');
+    }
+
+    // 10. Sanitizar fechas con formato no ISO en Estimate para prevenir errores Prisma P2023
     try {
       const estimates = (await db.$queryRawUnsafe('SELECT id, createdAt, updatedAt FROM "Estimate"')) as Array<{ id: string; createdAt: any; updatedAt: any }>;
       if (Array.isArray(estimates)) {
