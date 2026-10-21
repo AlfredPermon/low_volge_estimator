@@ -397,3 +397,12 @@ CREATE INDEX "AuditLog_result_idx" ON "AuditLog"("result");
 -- CreateIndex
 CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
 
+
+-- CreateTable (almacén de archivos subidos: planos PDF en Turso, sin filesystem)
+CREATE TABLE IF NOT EXISTS "UploadedFile" (
+    "key" TEXT NOT NULL PRIMARY KEY,
+    "contentType" TEXT NOT NULL DEFAULT 'application/pdf',
+    "sizeBytes" INTEGER NOT NULL DEFAULT 0,
+    "data" BLOB NOT NULL,
+    "createdAt" TEXT NOT NULL DEFAULT (datetime('now'))
+);

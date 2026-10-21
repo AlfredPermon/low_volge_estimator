@@ -13,6 +13,8 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
     volumes:
       - db-data:/app/prisma
+      # Persistencia de archivos subidos (planos PDF del Cronograma/Ingeniería)
+      - uploads-data:/app/uploads
     env_file:
       - .env.docker
 
@@ -34,6 +36,8 @@ services:
 volumes:
   # Volumen para persistir la base de datos SQLite
   db-data:
+  # Volumen para persistir los planos/archivos subidos (Cronograma -> Ingeniería)
+  uploads-data:
   # Volúmenes para persistir los certificados generados por Caddy
   caddy_data:
   caddy_config:

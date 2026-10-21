@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unlink } from "node:fs/promises";
-import path from "node:path";
 import { db } from "@/lib/db";
+import { deleteStoredFile } from "@/lib/upload-storage-db";
 
 export const runtime = "nodejs";
-
-function getUploadRootDir(): string {
-  const envDir = process.env.LVE_UPLOAD_DIR;
-  if (typeof envDir === "string" && envDir.trim()) return envDir.trim();
-  return path.join(process.cwd(), "uploads");
-}
 
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -23,11 +16,13 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
+    // Elimina el binario sin importar dónde esté almacenado:
+    //   - filepath "db:<key>" -> fila en la tabla UploadedFile de Turso.
+    //   - ruta relativa       -> archivo legado en disco (compatibilidad).
     try {
-      const absPath = path.join(getUploadRootDir(), doc.filepath);
-      await unlink(absPath);
+      await deleteStoredFile(doc.filepath);
     } catch (fsErr) {
-      console.warn("File unlink warning:", fsErr);
+      console.warn("File deletion warning:", fsErr);
     }
 
     await db.engineeringDocument.delete({ where: { id } });
