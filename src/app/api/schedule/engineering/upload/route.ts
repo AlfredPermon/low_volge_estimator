@@ -5,15 +5,11 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { createEngineeringDocumentSchema } from "@/lib/schedule/schedule-validators";
+import { getUploadRootDir } from "@/lib/upload-storage";
+import { saveBinaryToDb } from "@/lib/upload-storage-db";
 
 export const runtime = "nodejs";
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
-
-function getUploadRootDir(): string {
-  const envDir = process.env.LVE_UPLOAD_DIR;
-  if (typeof envDir === "string" && envDir.trim()) return envDir.trim();
-  return path.join(process.cwd(), "uploads");
-}
 
 function safeBasename(name: string): string {
   return name.replace(/[^\w.-]+/g, "_");
@@ -100,27 +96,69 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El contenido del archivo no es un PDF válido." }, { status: 400 });
     }
 
-    const uploadRoot = getUploadRootDir();
-    const scheduleDir = path.join(uploadRoot, "schedule", schedule.id, "engineering");
-    await mkdir(scheduleDir, { recursive: true });
-
     const fileId = crypto.randomUUID();
     const originalName = safeBasename(file.name || "plano.pdf");
     const ext = originalName.toLowerCase().endsWith(".pdf") ? ".pdf" : path.extname(originalName) || ".pdf";
     const storedFilename = `${fileId}${ext}`;
-    const storedPath = path.join(scheduleDir, storedFilename);
 
-    try {
-      await writeFile(storedPath, fileBuffer);
-    } catch (err) {
-      console.error("Error writing plano PDF to disk:", err);
-      return NextResponse.json(
-        { error: "No se pudo guardar el archivo en el servidor (permisos o disco lleno)." },
-        { status: 500 }
-      );
+    // Estrategia de almacenamiento (alineada con la integración Turso):
+    //   - Producción serverless (AWS Lambda /var/task, Vercel): el filesystem es
+    //     de solo lectura/efímero, por lo que el PDF se guarda como BLOB dentro de
+    //     la misma base de datos Turso (tabla UploadedFile). Esto elimina de raíz
+    //     el error "ENOENT: no such file or directory, mkdir '/var/task/uploads'"
+    //     y garantiza que descarga/preview funcionen desde cualquier instancia.
+    //   - Desarrollo local / Docker con volumen: se conserva el comportamiento
+    //     histórico en disco para no cambiar nada en esos entornos.
+    const useDatabaseStorage = Boolean(process.env.TURSO_DATABASE_URL);
+
+    let relativePath: string;
+
+    if (useDatabaseStorage) {
+      try {
+        relativePath = await saveBinaryToDb(storedFilename, fileBuffer);
+      } catch (err) {
+        console.error("Error storing plano PDF in Turso (UploadedFile):", err);
+        return NextResponse.json(
+          { error: "No se pudo guardar el archivo en la base de datos (Turso). Verifica la conexión e inténtalo de nuevo." },
+          { status: 500 }
+        );
+      }
+    } else {
+      const uploadRoot = getUploadRootDir();
+      const scheduleDir = path.join(uploadRoot, "schedule", schedule.id, "engineering");
+      try {
+        await mkdir(scheduleDir, { recursive: true });
+      } catch (err) {
+        console.error("Error creating upload directory for plano PDF:", err);
+        return NextResponse.json(
+          {
+            error:
+              "No se pudo preparar el almacén de archivos en el servidor. Configura LVE_UPLOAD_DIR apuntando a un directorio persistente y escribible.",
+          },
+          { status: 500 }
+        );
+      }
+
+      const storedPath = path.join(scheduleDir, storedFilename);
+      try {
+        await writeFile(storedPath, fileBuffer);
+      } catch (err) {
+        console.error("Error writing plano PDF to disk:", err);
+        const code = (err as NodeJS.ErrnoException)?.code;
+        const hint =
+          code === "EROFS"
+            ? "El sistema de archivos del servidor es de solo lectura en esta plataforma."
+            : code === "ENOSPC"
+              ? "El almacenamiento del servidor está lleno."
+              : "Verifica permisos o espacio de disco.";
+        return NextResponse.json(
+          { error: `No se pudo guardar el archivo en el servidor. ${hint}` },
+          { status: 500 }
+        );
+      }
+
+      relativePath = path.join("schedule", schedule.id, "engineering", storedFilename).replace(/\\/g, "/");
     }
-
-    const relativePath = path.join("schedule", schedule.id, "engineering", storedFilename).replace(/\\/g, "/");
 
     let created;
     try {
@@ -138,8 +176,9 @@ export async function POST(request: NextRequest) {
       });
     } catch (err) {
       console.error("Error creating EngineeringDocument record:", err);
-      // No dejar huérfano el archivo escrito en disco.
-      await import("node:fs/promises").then(({ unlink }) => unlink(storedPath).catch(() => {}));
+      // No dejar huérfano el recurso guardado (fila en Turso o archivo en disco).
+      const { deleteStoredFile } = await import("@/lib/upload-storage-db");
+      await deleteStoredFile(relativePath).catch(() => {});
       return NextResponse.json(
         { error: "No se pudo registrar el plano en la base de datos." },
         { status: 500 }

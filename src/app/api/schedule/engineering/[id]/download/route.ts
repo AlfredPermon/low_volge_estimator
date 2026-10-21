@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
+import { getBinaryForStoredPath } from "@/lib/upload-storage-db";
 
 export const runtime = "nodejs";
-
-function getUploadRootDir(): string {
-  const envDir = process.env.LVE_UPLOAD_DIR;
-  if (typeof envDir === "string" && envDir.trim()) return envDir.trim();
-  return path.join(process.cwd(), "uploads");
-}
 
 function safeBasename(name: string): string {
   return name.replace(/[^\w.-]+/g, "_");
@@ -31,8 +25,19 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    const absPath = path.join(getUploadRootDir(), doc.filepath);
-    const buf = await readFile(absPath);
+    // El binario puede estar en Turso (filepath "db:<key>") o en disco (rutas
+    // legadas anteriores a la migración). getBinaryForStoredPath resuelve ambos.
+    const resolved = await getBinaryForStoredPath(doc.filepath);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: "El archivo de este plano ya no está disponible en el servidor. Vuelve a subirlo." },
+        { status: 404 }
+      );
+    }
+    if (resolved.missingError) {
+      return NextResponse.json({ error: resolved.missingError }, { status: 404 });
+    }
+    const buf = resolved.buffer;
 
     const filename = safeBasename(doc.filename || "plano.pdf");
 
@@ -44,7 +49,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     const dispositionType = isInline ? "inline" : "attachment";
 
-    return new NextResponse(buf, {
+    return new NextResponse(new Uint8Array(buf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
