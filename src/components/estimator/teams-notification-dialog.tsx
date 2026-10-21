@@ -141,8 +141,39 @@ export default function TeamsNotificationDialog({
     webhookUrl.includes('teams.microsoft.com') ||
     webhookUrl.includes('teams.live.com');
 
+  // ── URLs de "Workflows" de Teams (flowapi.microsoft.com / triggers de solo
+  // lectura): responden 200 con un pixel de tracking y NUNCA publican el mensaje.
+  // Nota: NO incluye prod-xx.logic.azure.com/workflows/... porque ese es el
+  // trigger HTTP-POST legítimo de Power Automate que SÍ ejecuta el flujo.
+  let isWorkflowTrackingUrl = false;
+  try {
+    if (webhookUrl.trim()) {
+      const u = new URL(webhookUrl.trim());
+      const host = u.hostname.toLowerCase();
+      isWorkflowTrackingUrl =
+        host === 'flowapi.microsoft.com' ||
+        host.endsWith('.flowapi.microsoft.com') ||
+        host.includes('powerautomate.microsoft.com');
+    }
+  } catch {
+    isWorkflowTrackingUrl = false;
+  }
+
   const handleSendWebhook = async () => {
     const cleanUrl = webhookUrl.trim();
+
+    // Bloqueo explícito: endpoint de tracking de Workflow → jamás entrega el mensaje
+    if (isWorkflowTrackingUrl) {
+      toast.error(
+        'Esa URL es un endpoint de "Seguimiento/Trigger" de un Workflow de Teams: responde OK pero NO publica la notificación.',
+        {
+          description:
+            'Copia la URL desde la tarjeta "HTTP-POST" del workflow (termina en ?token=...) o usa un Conector de Webhook de Canal (https://...webhook.office.com/webhookb2/...).',
+          duration: 10000,
+        }
+      );
+      return;
+    }
 
     // Si el usuario ingresó la URL web de Teams (ej. https://teams.cloud.microsoft/)
     if (isWebUrlDetected || cleanUrl.includes('teams.cloud.microsoft')) {
@@ -403,12 +434,22 @@ export default function TeamsNotificationDialog({
                     </div>
                   )}
 
+                  {isWorkflowTrackingUrl && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-xs text-red-800">
+                      <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                      <span>
+                        Esta es una URL de <strong>Seguimiento/Trigger</strong> de un Workflow (no publica mensajes). Usa la URL de la tarjeta <strong>"HTTP-POST"</strong> o un Webhook de Canal (<strong className="font-mono">...webhook.office.com/webhookb2/...</strong>).
+                      </span>
+                    </div>
+                  )}
+
                   {showHelp && (
                     <div className="p-3 bg-stone-100 border border-stone-200 rounded-lg text-[11px] text-stone-700 space-y-1.5">
                       <p className="font-bold text-stone-800">📌 ¿Cómo crear una URL de Webhook en Teams?</p>
                       <p>1. En Teams, haz clic secundario en el canal que desees notificar y selecciona <strong>Workflows</strong> o <strong>Conectores</strong>.</p>
                       <p>2. Elige <strong>"Post to channel when a webhook request is received"</strong> (o Incoming Webhook).</p>
                       <p>3. Copia la URL generada y pégala arriba.</p>
+                      <p className="text-red-700 pt-1 border-t border-stone-200">⚠️ <strong>No uses</strong> la URL de "Seguimiento/Trigger" del Workflow (host <strong className="font-mono">flowapi.microsoft.com</strong>): solo registra lecturas, responde OK pero <strong>nunca envía el mensaje</strong>. La URL válida aparece en la tarjeta <strong>"HTTP-POST"</strong> del workflow y suele terminar en <strong className="font-mono">?token=...</strong>, con host <strong className="font-mono">prod-xx.westus.logic.azure.com/workflows/...</strong> o <strong className="font-mono">...webhook.office.com/webhookb2/...</strong></p>
                     </div>
                   )}
                 </div>

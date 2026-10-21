@@ -36,8 +36,41 @@ export async function POST(request: NextRequest) {
     // ── Detección inteligente de enlaces Web de Teams (ej. https://teams.cloud.microsoft/) ──
     const isTeamsWebLink =
       webhookUrl.includes('teams.cloud.microsoft') ||
+      webhookUrl.includes('teams.live.com') ||
       webhookUrl.includes('teams.microsoft.com/l/') ||
       webhookUrl.includes('teams.microsoft.com/_#/');
+
+    // ── Detección de URLs de "Workflows" de Teams (solo lectura/tracking) ────────
+    // Estos endpoints (flowapi.microsoft.com, logic.azure.com/workflows,
+    // powerautomate workflows) responden HTTP 200 con un GIF 1x1 de tracking:
+    // aceptan cualquier POST pero NUNCA publican el mensaje ni ejecutan el flujo.
+    // Deben rechazarse explícitamente para no reportar un éxito falso.
+    let isWorkflowTrackingUrl = false;
+    try {
+      const u = new URL(webhookUrl);
+      const host = u.hostname.toLowerCase();
+      // Solo hosts de SEGUIMIENTO/trigger de lectura de Workflows de Teams.
+      // IMPORTANTE: NO confundir con el trigger "HTTP-POST" legítimo de
+      // Power Automate (https://prod-xx.westus.logic.azure.com/workflows/...),
+      // que SÍ ejecuta el flujo y debe permanecer permitido.
+      isWorkflowTrackingUrl =
+        host === 'flowapi.microsoft.com' ||
+        host.endsWith('.flowapi.microsoft.com') ||
+        host.includes('powerautomate.microsoft.com');
+    } catch {
+      // URL malformada: se maneja más abajo en la validación de esquema
+    }
+
+    if (isWorkflowTrackingUrl) {
+      return NextResponse.json(
+        {
+          error:
+            'La URL ingresada corresponde a un endpoint de "Seguimiento/Trigger" de un Workflow de Teams (responde 200 con un pixel de tracking y nunca publica el mensaje). Copia la URL desde la tarjeta "HTTP-POST" del workflow (aparece al final de la ruta como "?token=...") o usa un Conector de Webhook de Canal (https://...webhook.office.com/webhookb2/...).',
+          requiresUrl: true,
+        },
+        { status: 422 }
+      );
+    }
 
     if (isTeamsWebLink) {
       return NextResponse.json(
@@ -277,6 +310,21 @@ export async function POST(request: NextRequest) {
         );
 
         if (response.ok) {
+          // ── Validación anti falso-positivo ─────────────────────────────────
+          // Los webhooks legítimos (Conector de Canal y Power Automate HTTP
+          // Request) responden 200/201/202 con cuerpo vacío o JSON/texto plano.
+          // Un Content-Type de imagen (GIF 1x1) u HTML indica un endpoint de
+          // tracking/página pública que NO entregó el mensaje al canal.
+          const contentType = (response.headers.get('content-type') || '').toLowerCase();
+
+          if (contentType.startsWith('image/') || contentType.includes('text/html')) {
+            lastError = `El endpoint respondió ${response.status} con Content-Type "${contentType}" (pixel de tracking / página web), lo que significa que NO publicó el mensaje en Teams.`;
+            console.warn(
+              `Teams Webhook attempt with ${fmt.name} got fake success (${contentType}). Trying next format...`
+            );
+            continue;
+          }
+
           return NextResponse.json({
             success: true,
             formatUsed: fmt.name,
@@ -294,7 +342,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: `No se pudo entregar la notificación a Microsoft Teams. Asegúrate de usar una URL de Webhook de conector o Workflow. Detalle: ${lastError}`,
+        error: `No se pudo entregar la notificación a Microsoft Teams. Verifica que la URL sea un Webhook de Canal (https://...webhook.office.com/webhookb2/...) o el trigger "HTTP-POST" de un Workflow / Power Automate (https://prod-xx.westus.logic.azure.com/workflows/...). Detalle: ${lastError}`,
       },
       { status: 400 }
     );
