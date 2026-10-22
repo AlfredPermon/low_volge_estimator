@@ -45,17 +45,102 @@ function ipv4ToLong(ip: string): number | null {
   return value >>> 0;
 }
 
-/** true si la IP es privada/link-local/loopback/multicast/reservada o metadata cloud. */
+/** Convierte un grupo hexadecimal IPv6 ("c14") a número; NaN si inválido. */
+function toGroup(hex: string): number {
+  return /^[0-9a-fA-F]{1,4}$/.test(hex) ? parseInt(hex, 16) : NaN;
+}
+
+/** Convierte una IPv6 (incluida notación abreviada "::") en 8 grupos de 16 bits. */
+function ipv6ToGroups(ip: string): number[] | null {
+  let s = ip.toLowerCase();
+  // Zona de enlace local (fe80::1%eth0) → se ignora la zona para clasificar el prefijo
+  const pct = s.indexOf('%');
+  if (pct !== -1) s = s.slice(0, pct);
+  if (!s.includes(':')) return null;
+
+  // Sufijo IPv4 embebido (::ffff:1.2.3.4, ::1.2.3.4, 6to4, etc.)
+  let tailGroups: number[] = [];
+  const dotIdx = s.lastIndexOf('.');
+  if (dotIdx !== -1) {
+    const lastColon = s.lastIndexOf(':');
+    if (dotIdx > lastColon) {
+      const embedded = ipv4ToLong(s.slice(lastColon + 1));
+      if (embedded === null) return null;
+      tailGroups = [(embedded >>> 16) & 0xffff, embedded & 0xffff];
+      s = s.slice(0, lastColon + 1);
+      // Casos "::ffff:" y "::" tras recortar el IPv4 → un solo ":" remanente
+      if (s.endsWith('::')) s += '0:';
+    }
+  }
+
+  const doubleColon = s.indexOf('::');
+  if (doubleColon !== -1 && s.indexOf('::', doubleColon + 1) !== -1) return null; // "::" duplicado
+
+  let groups: number[];
+  if (doubleColon === -1) {
+    // Forma expandida: se toleran los ":" de borde (split produce "" inicial/final)
+    const parts = s.split(':').filter((p, i, arr) => !(p === '' && (i === 0 || i === arr.length - 1)));
+    if (parts.length !== 8) return null;
+    groups = parts.map(toGroup);
+  } else {
+    const left = s.slice(0, doubleColon).split(':').filter(Boolean).map(toGroup);
+    const right = s.slice(doubleColon + 2).split(':').filter(Boolean).map(toGroup);
+    const total = left.length + right.length + tailGroups.length;
+    if (total > 7) return null;
+
+    const fill = Array(8 - total).fill(0);
+    groups = [...left, ...fill, ...right, ...tailGroups];
+  }
+
+  if (groups.length !== 8 || groups.some((g) => !Number.isFinite(g) || g < 0 || g > 0xffff)) {
+    return null;
+  }
+  return groups;
+}
+
+/**
+ * true si la IP (IPv4 o IPv6) es privada/link-local/loopback/multicast/reservada
+ * o dirección de metadatos cloud.
+ *
+ * HISTORIAL (issue persistente de notificaciones a Teams): versiones anteriores
+ * devolvían `true` para CUALQUIER IPv6 literal porque solo existía parsing de
+ * IPv4. Los hosts de Power Platform / Microsoft (p. ej. *.environment.api.powerplatform.com,
+ * *.logic.azure.com) resuelven también a IPv6 globales del rango 2600::/12 (asignado
+ * legítimamente a Microsoft por IANA), y `lookup(all:true)` las devolvía → el guard
+ * bloqueaba el webhook con "dirección privada o reservada" y la notificación nunca
+ * llegaba a Teams. Ahora se parsea IPv6 y solo se bloquean rangos realmente privados
+ * o reservados; cualquier IPv6 global válido se permite.
+ */
 export function isPrivateOrReservedIp(ip: string): boolean {
   const v = ip.trim().toLowerCase();
 
-  // IPv4-mapped IPv6 (::ffff:a.b.c.d)
-  const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPrivateOrReservedIp(mapped[1]);
-  if (v.startsWith('fc') || v.startsWith('fd')) return true; // fc00::/7 unique-local
-  if (v === '::1' || v === '::') return true;
-  if (v.startsWith('fe80')) return true; // link-local
-  if (/^f[0-9a-f]{2}:/.test(v) && !mapped) return true; // multicast/reserved ranges f000::/7
+  // ── IPv6 ────────────────────────────────────────────────────────────────
+  if (v.includes(':')) {
+    // IPv4-mapped IPv6 (::ffff:a.b.c.d y formas antiguas ::a.b.c.d)
+    const mapped = v.match(/^(?:::ffff:|::)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+    if (mapped) return isPrivateOrReservedIp(mapped[1]);
+
+    const g = ipv6ToGroups(v);
+    if (g === null) return true; // no parseable → deny by default
+
+    const [w0, w1, w2, w3] = g;
+    if (w0 === 0 && w1 === 0 && w2 === 0 && w3 === 0) {
+      // ::/96 — unspecified y IPv4-compatible heredados (obsoletos, reservar)
+      return true;
+    }
+    if (w0 === 0 && w1 === 0 && w2 === 0 && w3 === 1) return true;   // ::/128 loopback
+    if ((w0 & 0xfe00) === 0xfc00) return true;                        // fc00::/7 unique-local
+    if ((w0 & 0xffc0) === 0xfe80) return true;                        // fe80::/10 link-local
+    if ((w0 & 0xff00) === 0xff00) return true;                        // ff00::/8 multicast
+    if (w0 === 0x2001 && (w1 & 0xff00) === 0xdb00) return true;       // 2001:db8::/32 documentaci
+    if (w0 === 0x2001 && w1 === 0 && w2 === 0) return true;            // 2001::/32 Teredo
+    if (w0 === 0x2001 && w1 === 0x0410 && (w2 & 0xfff0) === 0) return true; // 2001:10::/28 ORCHID
+    if (w0 === 0x3ffe) return true;                                    // 3ffe::/16 legacy 6bone
+    if (w0 === 0x0100 && w1 === 0 && w2 === 0 && w3 === 0) return true; // 0100::/64 Discard-only
+    if (w0 >= 0x4000) return true;                                     // 4000::/3 reservado IETF
+    // Resto (2001:4800 Google, 2400 ARIN/APNIC, 2600::/12 Microsoft, 2a00/2a01 RIPE…) → GLOBAL
+    return false;
+  }
 
   const long = ipv4ToLong(v);
   if (long === null) return true; // no parseable → deny by default
