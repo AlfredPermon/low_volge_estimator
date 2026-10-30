@@ -175,6 +175,21 @@ export interface FloorplanDevice {
     hasSignaling?: boolean;
     medicalArea?: string;
   };
+  emergencyData?: {
+    category?: any;
+    exitType?: any;
+    arrowDirection?: any;
+    arrowAngle?: number;
+    viewingDistanceM?: number;
+    mountingHeightM?: number;
+    distFromCeilingM?: number;
+    illuminationLux?: number;
+    isPhotoluminescent?: boolean;
+    material?: any;
+    mountingType?: any;
+    unitCostMxn?: number;
+    associatedRouteId?: string;
+  };
 }
 
 export interface FloorplanRack {
@@ -599,6 +614,23 @@ function normalizeFloorplanItem(raw: unknown, defaultId = "fp_1", defaultName = 
                 coverageRadiusMeters: typeof d.extinguisherData.coverageRadiusMeters === "number" ? d.extinguisherData.coverageRadiusMeters : undefined,
                 hasSignaling: typeof d.extinguisherData.hasSignaling === "boolean" ? d.extinguisherData.hasSignaling : undefined,
                 medicalArea: d.extinguisherData.medicalArea ? String(d.extinguisherData.medicalArea) : undefined,
+              }
+            : undefined,
+          emergencyData: d.emergencyData
+            ? {
+                category: d.emergencyData.category,
+                exitType: d.emergencyData.exitType,
+                arrowDirection: d.emergencyData.arrowDirection,
+                arrowAngle: typeof d.emergencyData.arrowAngle === "number" ? d.emergencyData.arrowAngle : undefined,
+                viewingDistanceM: typeof d.emergencyData.viewingDistanceM === "number" ? d.emergencyData.viewingDistanceM : undefined,
+                mountingHeightM: typeof d.emergencyData.mountingHeightM === "number" ? d.emergencyData.mountingHeightM : undefined,
+                distFromCeilingM: typeof d.emergencyData.distFromCeilingM === "number" ? d.emergencyData.distFromCeilingM : undefined,
+                illuminationLux: typeof d.emergencyData.illuminationLux === "number" ? d.emergencyData.illuminationLux : undefined,
+                isPhotoluminescent: typeof d.emergencyData.isPhotoluminescent === "boolean" ? d.emergencyData.isPhotoluminescent : undefined,
+                material: d.emergencyData.material,
+                mountingType: d.emergencyData.mountingType,
+                unitCostMxn: typeof d.emergencyData.unitCostMxn === "number" ? d.emergencyData.unitCostMxn : undefined,
+                associatedRouteId: d.emergencyData.associatedRouteId ? String(d.emergencyData.associatedRouteId) : undefined,
               }
             : undefined,
         }))
