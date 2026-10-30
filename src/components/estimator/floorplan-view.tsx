@@ -91,6 +91,14 @@ import { ExtinguisherCanvasLayer } from '@/components/plano-espacial/extinguishe
 import { ExtinguisherSummarySheet } from '@/components/plano-espacial/extinguisher-seed/ExtinguisherSummarySheet';
 
 import { useEmergencyStore } from '@/store/useEmergencyStore';
+import {
+  NOM026SignCategory,
+  EmergencyExitType,
+  ArrowDirection,
+  SignMaterial,
+  SignMountingType,
+} from '@/types/emergencySignage';
+import { calculateNOM026Dimensions } from '@/lib/emergencyNormativeValidator';
 import { validateEmergencySignNormative } from '@/lib/emergencyNormativeValidator';
 import { EmergencyExitToolbar } from '@/components/plano-espacial/emergency-exit/EmergencyExitToolbar';
 import { EmergencyExitFloatingToolbar } from '@/components/plano-espacial/emergency-exit/EmergencyExitFloatingToolbar';
@@ -477,10 +485,15 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
         } else if (selectedElement?.type === 'device') {
           const devId = selectedElement.id;
           const isExt = (config.devices || []).some((d) => d.id === devId && d.system === 'extinguisher');
+          const isEmergency = (config.devices || []).some((d) => d.id === devId && d.system === 'emergency_exit');
           if (isExt) {
             fireStore.removeExtinguisher(devId, config.scaleMetersPerPx || 0.05);
             store.removeFloorplanDevice(devId);
             toast.info('Extintor eliminado del plano.');
+          } else if (isEmergency) {
+            emergencyStore.removeEmergencyDevice(devId, config.scaleMetersPerPx || 0.05);
+            store.removeFloorplanDevice(devId);
+            toast.info('Señal de emergencia eliminada del plano.');
           } else {
             store.removeFloorplanDevice(devId);
             toast.info('Dispositivo eliminado');
@@ -717,6 +730,66 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
     });
 
     fireStore.setExtinguishers(validatedList);
+  }, [config.id, config.devices, config.scaleMetersPerPx]);
+
+  // Sincronizar señales de emergencia (NOM-026) sembradas del plano activo
+  // con useEmergencyStore: rehidrata desde config.devices (persistido en BD)
+  // y revalida contra la escala actual. Equivalente al efecto de extintores.
+  useEffect(() => {
+    if (!config) return;
+    const currentScale = config.scaleMetersPerPx || 0.05;
+    const emgDevices = emergencyStore.devices;
+    const persistedEmergency = (config.devices || []).filter(
+      (d) => d.system === 'emergency_exit'
+    );
+
+    // Caso 1: el store volátil ya tiene señales del plano activo → propagar
+    // sus posiciones/parametría hacia config.devices para que "Guardar"
+    // las persista en BD (incluye arrastre de marcadores en el canvas).
+    const inStoreForActivePlano = emgDevices.filter(
+      (d) => !d.planoId || d.planoId === config.id
+    );
+    if (inStoreForActivePlano.length > 0) {
+      const sameContent =
+        persistedEmergency.length === inStoreForActivePlano.length &&
+        persistedEmergency.every((pd) => {
+          const dev = inStoreForActivePlano.find((d) => d.id === pd.id);
+          return (
+            !!dev &&
+            Math.round(dev.x) === Math.round(pd.x) &&
+            Math.round(dev.y) === Math.round(pd.y) &&
+            dev.viewingDistanceM === pd.emergencyData?.viewingDistanceM &&
+            dev.category === pd.emergencyData?.category &&
+            dev.material === pd.emergencyData?.material &&
+            dev.mountingType === pd.emergencyData?.mountingType &&
+            dev.mountingHeightM === pd.emergencyData?.mountingHeightM
+          );
+        });
+      if (!sameContent) {
+        emergencyStore.syncEmergencyToFloorplanConfig(
+          inStoreForActivePlano,
+          currentScale
+        );
+      }
+      return;
+    }
+
+    // Caso 2: store volátil vacío pero existen señales persistidas en el
+    // plano (p. ej. al recargar la página o cambiar de nivel) → rehidratar.
+    if (persistedEmergency.length > 0) {
+      emergencyStore.hydrateFromFloorplanDevices(
+        persistedEmergency,
+        config.id,
+        currentScale
+      );
+      return;
+    }
+
+    // Caso 3: plano nuevo sin señales → limpiar capa de emergencia.
+    if (emgDevices.length > 0) {
+      emergencyStore.clearEmergencyDevices();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.id, config.devices, config.scaleMetersPerPx]);
 
   // Handle File Upload (Image or PDF)
@@ -1059,6 +1132,21 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
           x: coords.x,
           y: coords.y,
           verticalDropM: emergencyStore.mountingHeightDefault,
+          emergencyData: {
+            category: addedDev.category,
+            exitType: addedDev.exitType,
+            arrowDirection: addedDev.arrowDirection,
+            arrowAngle: addedDev.arrowAngle,
+            viewingDistanceM: addedDev.viewingDistanceM,
+            mountingHeightM: addedDev.mountingHeightM,
+            distFromCeilingM: addedDev.distFromCeilingM,
+            illuminationLux: addedDev.illuminationLux,
+            isPhotoluminescent: addedDev.isPhotoluminescent,
+            material: addedDev.material,
+            mountingType: addedDev.mountingType,
+            unitCostMxn: addedDev.unitCostMxn,
+            associatedRouteId: addedDev.associatedRouteId,
+          },
         });
 
         toast.success(`Señal ${emergencyStore.selectedCategory.replace(/_/g, ' ')} sembrada en ${coords.x}, ${coords.y}`);
@@ -2977,6 +3065,8 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
                         onClick={() => {
                           if (confirm('¿Eliminar únicamente los dispositivos sembrados? Se preservarán intactos el plano, la escala, los racks e itinerarios troncales.')) {
                             store.clearFloorplanDevices();
+                            emergencyStore.clearEmergencyDevices();
+                            fireStore.clearExtinguishers();
                             toast.info('Dispositivos sembrados eliminados');
                           }
                         }}
