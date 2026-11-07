@@ -11,6 +11,7 @@ import { filterLineItemsForExport } from "./export-filters";
 import type { LineItem, CalculationResult } from "@/store/estimate-store";
 import type { SystemName } from "./calculator";
 import type { EnvironmentDisbursementPlan } from "./environment-erogations";
+import type { ExtinguisherLevelBreakdown, EmergencySignLevelBreakdown } from "./global-parametric-calculator";
 
 export interface PdfMetadata {
   name: string;
@@ -1297,3 +1298,630 @@ export function exportEnvironmentReportToPDF(
   doc.save(filename);
   return filename;
 }
+
+/**
+ * Genera el reporte PDF paramétrico oficial GLOBAL de extintores para todos los pisos del edificio.
+ */
+export function exportGlobalExtinguisherReportToPDF(
+  items: ExtinguisherPdfItem[],
+  meta: ExtinguisherPdfMetadata & { totalLevelsCount?: number },
+  levelsBreakdown: ExtinguisherLevelBreakdown[] = []
+): string {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const rightX = pageW - margin;
+  const currency = meta.currency || "MXN";
+  const dateStr = meta.generatedDate || new Date().toLocaleDateString('es-MX');
+  const respName = meta.riskResponsable || meta.responsible || "Control de Riesgos";
+  let y = margin;
+
+  // ─── Header Principal (Azul Marino Oficial #002060)
+  doc.setFillColor(0, 32, 96);
+  doc.rect(0, 0, pageW, 22, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text("GESTION DE RIESGOS Y CONTROL", margin, 11);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Paramétrico Global Extintores (Edificio Completo)", margin, 17);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(meta.revision || "Rev. 1", rightX, 11, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Presupuesto Paramétrico Global", rightX, 17, { align: "right" });
+
+  y = 30;
+
+  // ─── Bloque de Información del Proyecto
+  doc.setTextColor(40, 40, 40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(meta.projectName || "Estimación Paramétrica Global de Extintores", margin, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text(`Cliente: ${meta.clientName || "Cliente General"}`, margin, y);
+  doc.text(`Proyecto: ${meta.projectName || "Estimación General"}`, margin + 80, y);
+  y += 4.5;
+  doc.text(`Responsable: ${respName}`, margin, y);
+  doc.text(`Fecha: ${dateStr}`, margin + 80, y);
+  y += 4.5;
+  const levelsCount = levelsBreakdown.length || meta.totalLevelsCount || 1;
+  doc.text(`Alcance: Edificio Completo (${levelsCount} Niveles de Edificio)`, margin, y);
+  doc.text(`Moneda: ${currency} · Equipos Totales: ${meta.totalCount} PZA`, margin + 80, y);
+  y += 7;
+
+  const ensureSpace = (needed: number): void => {
+    if (y + needed > pageH - 25) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // ─── SECCIÓN 1: MATRIZ DE DISTRIBUCIÓN POR NIVEL DE EDIFICIO ───
+  if (levelsBreakdown.length > 0) {
+    ensureSpace(25);
+    doc.setFillColor(0, 32, 96);
+    doc.rect(margin, y - 4, pageW - margin * 2, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("1. Distribución Paramétrica por Nivel de Edificio (Pisos)", margin + 2, y);
+    y += 5;
+
+    // Encabezado de la tabla de niveles
+    const COL_LVL_NAME = margin + 2;
+    const COL_LVL_CODE = margin + 50;
+    const COL_LVL_CANT = margin + 75;
+    const COL_LVL_AREAS = margin + 95;
+    const COL_LVL_SUB = rightX - 2;
+
+    doc.setFillColor(220, 230, 242);
+    doc.rect(margin, y - 3.5, pageW - margin * 2, 5.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Nivel / Piso", COL_LVL_NAME, y);
+    doc.text("Código", COL_LVL_CODE, y);
+    doc.text("Equipos (PZA)", COL_LVL_CANT, y, { align: "right" });
+    doc.text("Áreas Principales Cubiertas", COL_LVL_AREAS, y);
+    doc.text("Subtotal (MXN)", COL_LVL_SUB, y, { align: "right" });
+    y += 4.5;
+
+    levelsBreakdown.forEach((lvl, idx) => {
+      ensureSpace(7);
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y - 3, pageW - margin * 2, 5, "F");
+      }
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(50, 50, 50);
+
+      doc.text(lvl.levelName, COL_LVL_NAME, y);
+      doc.text(lvl.levelCode, COL_LVL_CODE, y);
+      doc.text(String(lvl.count), COL_LVL_CANT, y, { align: "right" });
+      const areasStr = (lvl.medicalAreas && lvl.medicalAreas.length > 0)
+        ? lvl.medicalAreas.slice(0, 3).join(', ')
+        : 'Pasillos y Áreas Comunes';
+      doc.text(areasStr.slice(0, 45), COL_LVL_AREAS, y);
+      doc.text(formatCurrency(lvl.subtotalAmount, currency), COL_LVL_SUB, y, { align: "right" });
+      y += 5;
+    });
+
+    // Fila total de niveles
+    ensureSpace(7);
+    doc.setFillColor(235, 240, 248);
+    doc.rect(margin, y - 3, pageW - margin * 2, 5.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(0, 32, 96);
+    doc.text(`TOTAL CONSOLIDADO (${levelsBreakdown.length} PISOS)`, COL_LVL_NAME, y);
+    doc.text(String(meta.totalCount), COL_LVL_CANT, y, { align: "right" });
+    doc.text(formatCurrency(meta.subtotalAmount, currency), COL_LVL_SUB, y, { align: "right" });
+    y += 9;
+  }
+
+  // ─── SECCIÓN 2: DESGLOSE PARAMÉTRICO CONSOLIDADO (BOM GLOBAL) ───
+  ensureSpace(25);
+  doc.setFillColor(176, 196, 222);
+  doc.rect(margin, y - 4, pageW - margin * 2, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 32, 96);
+  doc.text("2. Desglose Paramétrico Consolidado (5.7.6 Extintores & PCI - Edificio Completo)", margin + 2, y + 1);
+  doc.text(formatCurrency(meta.subtotalAmount, currency), rightX - 2, y + 1, { align: "right" });
+  y += 7;
+
+  // Columnas BOM
+  const COL_PARTIDA  = margin + 1;      // x=15
+  const COL_MARCA    = margin + 22;     // x=36
+  const COL_MODELO   = margin + 42;     // x=56
+  const COL_DESC     = margin + 66;     // x=80
+  const COL_UN       = margin + 118;    // x=132
+  const COL_CANT     = margin + 134;    // x=148
+  const COL_PU       = margin + 156;    // x=170
+  const COL_IMPORTE  = rightX;          // right edge
+
+  const drawTableHeader = (yPos: number): number => {
+    doc.setFillColor(220, 230, 242);
+    doc.rect(margin, yPos - 4, pageW - margin * 2, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Partida",     COL_PARTIDA, yPos);
+    doc.text("Marca",       COL_MARCA,   yPos);
+    doc.text("Modelo",      COL_MODELO,  yPos);
+    doc.text("Descripción", COL_DESC,    yPos);
+    doc.text("Un",          COL_UN,      yPos);
+    doc.text("Cant",        COL_CANT,    yPos, { align: "right" });
+    doc.text("P.U.",        COL_PU,      yPos, { align: "right" });
+    doc.text("Importe",     COL_IMPORTE, yPos, { align: "right" });
+    return yPos + 4;
+  };
+
+  y = drawTableHeader(y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+
+  const ensureRowSpace = (needed: number): void => {
+    if (y + needed > pageH - 45) {
+      doc.addPage();
+      y = margin;
+      y = drawTableHeader(y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(40, 40, 40);
+    }
+  };
+
+  items.forEach((item, index) => {
+    doc.setFontSize(7.5);
+
+    const partidaText = `5.7.6.${String(index + 1).padStart(2, "0")}`;
+    const marcaText = item.sku.includes("ANSUL") ? "ANSUL" : item.sku.includes("AMEREX") ? "AMEREX" : "GENÉRICO";
+    const modeloText = item.sku;
+    const descText = `${item.name} [Ubicaciones: ${item.medicalArea || "Edificio Completo"}]`;
+
+    const widthPartida = COL_MARCA - COL_PARTIDA - 1;
+    const widthMarca = COL_MODELO - COL_MARCA - 1;
+    const widthModelo = COL_DESC - COL_MODELO - 1;
+    const widthDesc = COL_UN - COL_DESC - 1;
+
+    const partidaLines = doc.splitTextToSize(partidaText, widthPartida);
+    const marcaLines = doc.splitTextToSize(marcaText, widthMarca);
+    const modeloLines = doc.splitTextToSize(modeloText, widthModelo);
+    const descLines = doc.splitTextToSize(descText, widthDesc);
+
+    const maxLines = Math.max(1, partidaLines.length, marcaLines.length, modeloLines.length, descLines.length);
+    const lineHeight = 3.6;
+    const rowGap = 1.0;
+    const rowHeight = maxLines * lineHeight + rowGap;
+
+    ensureRowSpace(rowHeight);
+
+    for (let i = 0; i < maxLines; i++) {
+      const yy = y + i * lineHeight;
+      if (partidaLines[i]) doc.text(String(partidaLines[i]), COL_PARTIDA, yy);
+      if (marcaLines[i]) doc.text(String(marcaLines[i]), COL_MARCA, yy);
+      if (modeloLines[i]) doc.text(String(modeloLines[i]), COL_MODELO, yy);
+      if (descLines[i]) doc.text(String(descLines[i]), COL_DESC, yy);
+    }
+
+    doc.text("PZA", COL_UN, y);
+    doc.text(String(item.count), COL_CANT, y, { align: "right" });
+    doc.text(formatCurrency(item.unitCost, currency), COL_PU, y, { align: "right" });
+    doc.text(formatCurrency(item.totalAmount, currency), COL_IMPORTE, y, { align: "right" });
+
+    y += rowHeight;
+  });
+
+  y += 4;
+
+  // ─── SECCIÓN 3: TOTALES FINANCIEROS CONSOLIDADOS ───
+  ensureSpace(35);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 32, 96);
+  doc.text("Resumen Financiero Global del Sistema", margin, y);
+  y += 5;
+
+  doc.setFillColor(245, 247, 250);
+  doc.rect(margin, y - 4, pageW - margin * 2, 22, "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(40, 40, 40);
+
+  doc.text("Subtotal Global Equipamiento Extintores:", margin + 3, y);
+  doc.text(formatCurrency(meta.subtotalAmount, currency), rightX - 3, y, { align: "right" });
+  y += 5;
+
+  doc.text(`IVA (${(meta.ivaRate * 100).toFixed(0)}%):`, margin + 3, y);
+  doc.text(formatCurrency(meta.ivaAmount, currency), rightX - 3, y, { align: "right" });
+  y += 5;
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin + 3, y - 3, rightX - 3, y - 3);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 32, 96);
+  doc.text("GRAN TOTAL GLOBAL ESTIMADO CON IVA:", margin + 3, y + 1);
+  doc.text(formatCurrency(meta.totalWithIva, currency), rightX - 3, y + 1, { align: "right" });
+  y += 10;
+
+  // ─── SECCIÓN 4: DICTAMEN DE CUMPLIMIENTO OFICIAL ───
+  ensureSpace(32);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 32, 96);
+  doc.text("Dictamen de Cumplimiento Normativo Oficial (NOM-002 / NOM-016 / NOM-026)", margin, y);
+  y += 5;
+
+  doc.setFillColor(240, 244, 248);
+  doc.rect(margin, y - 3, pageW - margin * 2, 22, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(50, 50, 50);
+
+  const nomText = [
+    "• NOM-002-STPS-2010: Cumplimiento de distancias máximas (<=15m alto riesgo / <=30m ordinario) y altura <=1.50m.",
+    "• NOM-016-SSA3-2012: Compatibilidad química (Quirófanos CO2, CEYE/Laboratorio Agente Limpio, Cocina Clase K).",
+    "• NOM-026-STPS-2008: Señalización fotoluminiscente colocada entre 1.80m y 2.00m sobre piso terminado.",
+    `• Estado Global Consolidado: ${meta.validCount} de ${meta.totalCount} extintores en ubicaciones 100% validadas a través de los ${levelsCount} niveles.`
+  ];
+  nomText.forEach((t) => {
+    doc.text(t, margin + 3, y);
+    y += 4.5;
+  });
+
+  // Footer Paginado
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${p} de ${totalPages} · Paramétrico Global de Extintores · Low Voltage Estimator`,
+      pageW / 2,
+      pageH - 6,
+      { align: "center" }
+    );
+  }
+
+  const cleanName = (meta.projectName || "reporte_extintores_global").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_");
+  const filename = `${cleanName}_Parametrico_Global_Extintores.pdf`;
+  doc.save(filename);
+  return filename;
+}
+
+/**
+ * Genera el reporte PDF paramétrico oficial GLOBAL de Señalización NOM-026 para todos los pisos del edificio.
+ */
+export function exportGlobalEmergencySignageReportToPDF(
+  items: EmergencySignagePdfItem[],
+  meta: EmergencySignagePdfMetadata & { totalLevelsCount?: number },
+  levelsBreakdown: EmergencySignLevelBreakdown[] = []
+): string {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const rightX = pageW - margin;
+  const currency = meta.currency || "MXN";
+  const dateStr = meta.generatedDate || new Date().toLocaleDateString('es-MX');
+  const respName = meta.riskResponsable || meta.responsible || "Control de Riesgos";
+  let y = margin;
+
+  // ─── Header Principal (Verde de Seguridad #00A651)
+  doc.setFillColor(0, 166, 81);
+  doc.rect(0, 0, pageW, 22, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text("GESTION DE RIESGOS Y NORMAS STPS", margin, 11);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Paramétrico Global Señalización NOM-026 (Edificio Completo)", margin, 17);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(meta.revision || "Rev. 1", rightX, 11, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Dictamen Paramétrico Global", rightX, 17, { align: "right" });
+
+  y = 30;
+
+  // ─── Bloque de Información del Proyecto
+  doc.setTextColor(40, 40, 40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(meta.projectName || "Estimación Paramétrica Global de Señalización NOM-026", margin, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text(`Cliente: ${meta.clientName || "Cliente General"}`, margin, y);
+  doc.text(`Proyecto: ${meta.projectName || "Estimación General"}`, margin + 80, y);
+  y += 4.5;
+  doc.text(`Responsable: ${respName}`, margin, y);
+  doc.text(`Fecha: ${dateStr}`, margin + 80, y);
+  y += 4.5;
+  const levelsCount = levelsBreakdown.length || meta.totalLevelsCount || 1;
+  doc.text(`Alcance: Edificio Completo (${levelsCount} Niveles de Edificio)`, margin, y);
+  doc.text(`Moneda: ${currency} · Cumplimiento STPS: ${meta.compliancePercent}%`, margin + 80, y);
+  y += 7;
+
+  const ensureSpace = (needed: number): void => {
+    if (y + needed > pageH - 25) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // ─── SECCIÓN 1: MATRIZ DE DISTRIBUCIÓN POR NIVEL DE EDIFICIO ───
+  if (levelsBreakdown.length > 0) {
+    ensureSpace(25);
+    doc.setFillColor(0, 166, 81);
+    doc.rect(margin, y - 4, pageW - margin * 2, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("1. Distribución Paramétrica de Señales por Nivel de Edificio (Pisos)", margin + 2, y);
+    y += 5;
+
+    const COL_LVL_NAME  = margin + 2;
+    const COL_LVL_EXIT  = margin + 45;
+    const COL_LVL_ROUTE = margin + 63;
+    const COL_LVL_STAIR = margin + 80;
+    const COL_LVL_SAFE  = margin + 98;
+    const COL_LVL_AID   = margin + 115;
+    const COL_LVL_TOTAL = margin + 132;
+    const COL_LVL_CUMP  = margin + 150;
+    const COL_LVL_SUB   = rightX - 2;
+
+    doc.setFillColor(220, 245, 230);
+    doc.rect(margin, y - 3.5, pageW - margin * 2, 5.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(30, 30, 30);
+    doc.text("Nivel / Piso", COL_LVL_NAME, y);
+    doc.text("Salidas", COL_LVL_EXIT, y, { align: "right" });
+    doc.text("Rutas", COL_LVL_ROUTE, y, { align: "right" });
+    doc.text("Escaleras", COL_LVL_STAIR, y, { align: "right" });
+    doc.text("Zonas", COL_LVL_SAFE, y, { align: "right" });
+    doc.text("Primeros A.", COL_LVL_AID, y, { align: "right" });
+    doc.text("Total", COL_LVL_TOTAL, y, { align: "right" });
+    doc.text("Cumpl.", COL_LVL_CUMP, y, { align: "right" });
+    doc.text("Subtotal", COL_LVL_SUB, y, { align: "right" });
+    y += 4.5;
+
+    levelsBreakdown.forEach((lvl, idx) => {
+      ensureSpace(7);
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 252, 248);
+        doc.rect(margin, y - 3, pageW - margin * 2, 5, "F");
+      }
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(50, 50, 50);
+
+      doc.text(lvl.levelName, COL_LVL_NAME, y);
+      doc.text(String(lvl.exitCount), COL_LVL_EXIT, y, { align: "right" });
+      doc.text(String(lvl.routeCount), COL_LVL_ROUTE, y, { align: "right" });
+      doc.text(String(lvl.stairCount), COL_LVL_STAIR, y, { align: "right" });
+      doc.text(String(lvl.safeZoneCount), COL_LVL_SAFE, y, { align: "right" });
+      doc.text(String(lvl.firstAidCount), COL_LVL_AID, y, { align: "right" });
+      doc.text(String(lvl.count), COL_LVL_TOTAL, y, { align: "right" });
+      doc.text(`${lvl.compliancePercent}%`, COL_LVL_CUMP, y, { align: "right" });
+      doc.text(formatCurrency(lvl.subtotalAmount, currency), COL_LVL_SUB, y, { align: "right" });
+      y += 5;
+    });
+
+    // Fila total de niveles
+    ensureSpace(7);
+    doc.setFillColor(220, 245, 230);
+    doc.rect(margin, y - 3, pageW - margin * 2, 5.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(0, 100, 40);
+    doc.text(`TOTAL CONSOLIDADO (${levelsBreakdown.length} PISOS)`, COL_LVL_NAME, y);
+    doc.text(String(meta.totalCount), COL_LVL_TOTAL, y, { align: "right" });
+    doc.text(`${meta.compliancePercent}%`, COL_LVL_CUMP, y, { align: "right" });
+    doc.text(formatCurrency(meta.subtotalAmount, currency), COL_LVL_SUB, y, { align: "right" });
+    y += 9;
+  }
+
+  // ─── SECCIÓN 2: DESGLOSE PARAMÉTRICO CONSOLIDADO (BOM GLOBAL) ───
+  ensureSpace(25);
+  doc.setFillColor(160, 220, 180);
+  doc.rect(margin, y - 4, pageW - margin * 2, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 100, 40);
+  doc.text("2. Desglose Paramétrico Consolidado (5.8.1 Señalización NOM-026 - Edificio Completo)", margin + 2, y + 1);
+  doc.text(formatCurrency(meta.subtotalAmount, currency), rightX - 2, y + 1, { align: "right" });
+  y += 7;
+
+  // Columnas BOM Señalética
+  const COL_PARTIDA  = margin + 1;      // x=15
+  const COL_MARCA    = margin + 22;     // x=36
+  const COL_MODELO   = margin + 42;     // x=56
+  const COL_DESC     = margin + 66;     // x=80
+  const COL_UN       = margin + 118;    // x=132
+  const COL_CANT     = margin + 134;    // x=148
+  const COL_PU_MAT   = margin + 150;    // x=164
+  const COL_PU_INST  = margin + 166;    // x=180
+  const COL_IMPORTE  = rightX;          // right edge
+
+  const drawTableHeader = (yPos: number): number => {
+    doc.setFillColor(220, 245, 230);
+    doc.rect(margin, yPos - 4, pageW - margin * 2, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Partida",      COL_PARTIDA, yPos);
+    doc.text("Norma",        COL_MARCA,   yPos);
+    doc.text("Modelo",       COL_MODELO,  yPos);
+    doc.text("Descripción",  COL_DESC,    yPos);
+    doc.text("Un",           COL_UN,      yPos);
+    doc.text("Cant",         COL_CANT,    yPos, { align: "right" });
+    doc.text("P.U. Mat",     COL_PU_MAT,  yPos, { align: "right" });
+    doc.text("P.U. Inst",    COL_PU_INST, yPos, { align: "right" });
+    doc.text("Importe",      COL_IMPORTE, yPos, { align: "right" });
+    return yPos + 4;
+  };
+
+  y = drawTableHeader(y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+
+  const ensureRowSpace = (needed: number): void => {
+    if (y + needed > pageH - 45) {
+      doc.addPage();
+      y = margin;
+      y = drawTableHeader(y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(40, 40, 40);
+    }
+  };
+
+  items.forEach((item, index) => {
+    doc.setFontSize(7.5);
+
+    const partidaText = `5.8.1.${String(index + 1).padStart(2, "0")}`;
+    const marcaText = "NOM-026-STPS";
+    const modeloText = item.sku;
+    const descText = `${item.name} (${item.material.replace(/_/g, " ")})`;
+
+    const widthPartida = COL_MARCA - COL_PARTIDA - 1;
+    const widthMarca = COL_MODELO - COL_MARCA - 1;
+    const widthModelo = COL_DESC - COL_MODELO - 1;
+    const widthDesc = COL_UN - COL_DESC - 1;
+
+    const partidaLines = doc.splitTextToSize(partidaText, widthPartida);
+    const marcaLines = doc.splitTextToSize(marcaText, widthMarca);
+    const modeloLines = doc.splitTextToSize(modeloText, widthModelo);
+    const descLines = doc.splitTextToSize(descText, widthDesc);
+
+    const maxLines = Math.max(1, partidaLines.length, marcaLines.length, modeloLines.length, descLines.length);
+    const lineHeight = 3.6;
+    const rowGap = 1.0;
+    const rowHeight = maxLines * lineHeight + rowGap;
+
+    ensureRowSpace(rowHeight);
+
+    for (let i = 0; i < maxLines; i++) {
+      const yy = y + i * lineHeight;
+      if (partidaLines[i]) doc.text(String(partidaLines[i]), COL_PARTIDA, yy);
+      if (marcaLines[i]) doc.text(String(marcaLines[i]), COL_MARCA, yy);
+      if (modeloLines[i]) doc.text(String(modeloLines[i]), COL_MODELO, yy);
+      if (descLines[i]) doc.text(String(descLines[i]), COL_DESC, yy);
+    }
+
+    doc.text("PZA", COL_UN, y);
+    doc.text(String(item.count), COL_CANT, y, { align: "right" });
+    doc.text(formatCurrency(item.unitCost, currency), COL_PU_MAT, y, { align: "right" });
+    doc.text(formatCurrency(item.installCost, currency), COL_PU_INST, y, { align: "right" });
+    doc.text(formatCurrency(item.totalAmount, currency), COL_IMPORTE, y, { align: "right" });
+
+    y += rowHeight;
+  });
+
+  y += 4;
+
+  // ─── SECCIÓN 3: TOTALES FINANCIEROS CONSOLIDADOS ───
+  ensureSpace(40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 100, 40);
+  doc.text("Resumen Financiero Global del Sistema NOM-026", margin, y);
+  y += 5;
+
+  doc.setFillColor(245, 250, 245);
+  doc.rect(margin, y - 4, pageW - margin * 2, 27, "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+
+  doc.text("Subtotal Suministro de Señalética (Materiales):", margin + 3, y);
+  doc.text(formatCurrency(meta.subtotalMaterials, currency), rightX - 3, y, { align: "right" });
+  y += 4.5;
+
+  doc.text("Subtotal Mano de Obra e Instalación Certificada:", margin + 3, y);
+  doc.text(formatCurrency(meta.subtotalInstall, currency), rightX - 3, y, { align: "right" });
+  y += 4.5;
+
+  doc.text("Subtotal General Consolidado:", margin + 3, y);
+  doc.text(formatCurrency(meta.subtotalAmount, currency), rightX - 3, y, { align: "right" });
+  y += 4.5;
+
+  doc.text(`IVA (${(meta.ivaRate * 100).toFixed(0)}%):`, margin + 3, y);
+  doc.text(formatCurrency(meta.ivaAmount, currency), rightX - 3, y, { align: "right" });
+  y += 4.5;
+
+  doc.setDrawColor(180, 220, 190);
+  doc.line(margin + 3, y - 2, rightX - 3, y - 2);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 100, 40);
+  doc.text("GRAN TOTAL GLOBAL ESTIMADO CON IVA:", margin + 3, y + 1.5);
+  doc.text(formatCurrency(meta.totalWithIva, currency), rightX - 3, y + 1.5, { align: "right" });
+  y += 10;
+
+  // ─── SECCIÓN 4: DICTAMEN DE CUMPLIMIENTO OFICIAL ───
+  ensureSpace(32);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 100, 40);
+  doc.text("Dictamen de Cumplimiento Normativo Oficial NOM-026-STPS-2008", margin, y);
+  y += 5;
+
+  doc.setFillColor(240, 248, 242);
+  doc.rect(margin, y - 3, pageW - margin * 2, 22, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(50, 50, 50);
+
+  const nomText = [
+    "• NOM-026-STPS-2008 Sección 8.4: Fórmulas de visibilidad S >= L^2 / 2000 verificadas para todas las señales.",
+    "• Color de Seguridad: Verde Oficial (#00A651 / Pantone 354C) cubriendo al menos el 50% de la superficie total.",
+    "• Alturas de Montaje: Señales sobre puerta instaladas a 2.20m y en banderola a 2.50m con fotoluminiscencia de alta persistencia.",
+    `• Estado Global Consolidado: ${meta.validCount} de ${meta.totalCount} señales conformes (${meta.compliancePercent}% de cumplimiento) en los ${levelsCount} niveles.`
+  ];
+  nomText.forEach((t) => {
+    doc.text(t, margin + 3, y);
+    y += 4.5;
+  });
+
+  // Footer Paginado
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Página ${p} de ${totalPages} · Paramétrico Global NOM-026 · Low Voltage Estimator`,
+      pageW / 2,
+      pageH - 6,
+      { align: "center" }
+    );
+  }
+
+  const cleanName = (meta.projectName || "reporte_nom026_global").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_");
+  const filename = `${cleanName}_Parametrico_Global_Senalizacion_NOM026.pdf`;
+  doc.save(filename);
+  return filename;
+}
+

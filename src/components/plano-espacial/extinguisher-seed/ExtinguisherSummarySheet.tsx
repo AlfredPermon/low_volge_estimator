@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Sparkles,
   Database,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExtinguisherClassIcon } from './ExtinguisherClassIcon';
@@ -54,12 +55,14 @@ interface ExtinguisherSummarySheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   extinguishers: ExtinguisherDevice[];
+  onOpenGlobalParametrics?: () => void;
 }
 
 export function ExtinguisherSummarySheet({
   open,
   onOpenChange,
   extinguishers,
+  onOpenGlobalParametrics,
 }: ExtinguisherSummarySheetProps) {
   const estimateStore = useEstimateStore();
 
@@ -359,7 +362,22 @@ export function ExtinguisherSummarySheet({
                 Cerrar
               </Button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {onOpenGlobalParametrics && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onOpenGlobalParametrics();
+                    }}
+                    className="h-9 text-xs bg-amber-950/90 hover:bg-amber-900 text-amber-200 border border-amber-600/70 font-bold gap-1.5 px-3.5 shadow-sm"
+                    title="Abrir la Gestión de Paramétricos Globales de Todos los Pisos"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" /> Gestión Global de Paramétricos
+                  </Button>
+                )}
+
                 {/* Botón Principal: Reporte Paramétrico de Extintores */}
                 <Button
                   size="default"

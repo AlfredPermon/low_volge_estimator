@@ -50,6 +50,7 @@ import {
   Wrench,
   RefreshCw,
   FolderTree,
+  SlidersHorizontal,
   Maximize2,
   Minimize2,
   Eye,
@@ -96,6 +97,7 @@ import { EmergencyExitToolbar } from '@/components/plano-espacial/emergency-exit
 import { EmergencyExitFloatingToolbar } from '@/components/plano-espacial/emergency-exit/EmergencyExitFloatingToolbar';
 import { EmergencyExitCanvasLayer } from '@/components/plano-espacial/emergency-exit/EmergencyExitCanvasLayer';
 import { EmergencyExitSummarySheet } from '@/components/plano-espacial/emergency-exit/EmergencyExitSummarySheet';
+import { GlobalParametricManagementDialog } from '@/components/plano-espacial/GlobalParametricManagementDialog';
 
 type ToolMode = 'select' | 'pan' | 'add_rack' | 'add_device' | 'add_pathway' | 'edit_pathway' | 'calibrate' | 'add_exclusion_zone';
 
@@ -170,6 +172,7 @@ export default function FloorplanView({ onSave, isSaving = false }: FloorplanVie
   const emergencyStore = useEmergencyStore();
   const [showExtinguisherSummary, setShowExtinguisherSummary] = useState(false);
   const [showEmergencySummary, setShowEmergencySummary] = useState(false);
+  const [showGlobalParametricModal, setShowGlobalParametricModal] = useState(false);
 
   // Manual Recalculation Sync trigger
   const [syncTrigger, setSyncTrigger] = useState(0);
@@ -1453,6 +1456,17 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
             title="Sincronizar y recalcular métricas espaciales 2.5D y acumulados"
           >
             <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin-once" /> Sincronizar Recálculo
+          </Button>
+
+          {/* Botón de Gestión de Paramétricos Globales (Edificio Completo) */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowGlobalParametricModal(true)}
+            className="h-9 text-xs bg-amber-950/90 hover:bg-amber-900 text-amber-200 border border-amber-600/70 gap-1.5 font-bold px-3.5 shadow-sm transition-all"
+            title="Gestión de Paramétricos Globales de Todos los Pisos (Extintores y Señalética)"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" /> Gestión de Paramétricos
           </Button>
 
           {/* Save Button */}
@@ -3951,6 +3965,7 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
         open={showExtinguisherSummary}
         onOpenChange={setShowExtinguisherSummary}
         extinguishers={fireStore.extinguishers}
+        onOpenGlobalParametrics={() => setShowGlobalParametricModal(true)}
       />
 
       {/* Sheet / Dialog de Cuantificación y Dictamen NOM-026 de Señalización de Emergencia */}
@@ -3959,6 +3974,13 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
         onOpenChange={setShowEmergencySummary}
         projectName={store.projectName || store.name}
         floorplanName={config.name}
+        onOpenGlobalParametrics={() => setShowGlobalParametricModal(true)}
+      />
+
+      {/* Modal / Diálogo de Gestión de Paramétricos Globales (Edificio Completo) */}
+      <GlobalParametricManagementDialog
+        open={showGlobalParametricModal}
+        onOpenChange={setShowGlobalParametricModal}
       />
     </div>
   );
