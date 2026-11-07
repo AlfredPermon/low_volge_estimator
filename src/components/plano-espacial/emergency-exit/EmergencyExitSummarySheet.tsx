@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   DoorOpen,
   FileText,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   EmergencyExitParametricReportDialog,
@@ -28,6 +29,7 @@ interface EmergencyExitSummarySheetProps {
   onOpenChange: (open: boolean) => void;
   projectName?: string;
   floorplanName?: string;
+  onOpenGlobalParametrics?: () => void;
 }
 
 export function EmergencyExitSummarySheet({
@@ -35,6 +37,7 @@ export function EmergencyExitSummarySheet({
   onOpenChange,
   projectName = 'Proyecto Corporativo',
   floorplanName = 'Planta Baja',
+  onOpenGlobalParametrics,
 }: EmergencyExitSummarySheetProps) {
   const store = useEmergencyStore();
   const report = generateEmergencySignageReport(store.devices);
@@ -230,14 +233,31 @@ export function EmergencyExitSummarySheet({
           </div>
 
           {/* Acciones del Modal */}
-          <div className="pt-4 border-t border-stone-800 flex items-center justify-between">
-            <Button
-              size="sm"
-              onClick={() => setShowParametricReport(true)}
-              className="h-9 text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold gap-1.5 shadow-md shadow-emerald-950/50 px-4"
-            >
-              <FileText className="w-4 h-4 text-emerald-100" /> Generar Reporte Paramétrico
-            </Button>
+          <div className="pt-4 border-t border-stone-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setShowParametricReport(true)}
+                className="h-9 text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold gap-1.5 shadow-md shadow-emerald-950/50 px-4"
+              >
+                <FileText className="w-4 h-4 text-emerald-100" /> Generar Reporte Paramétrico
+              </Button>
+
+              {onOpenGlobalParametrics && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onOpenGlobalParametrics();
+                  }}
+                  className="h-9 text-xs bg-amber-950/90 hover:bg-amber-900 text-amber-200 border border-amber-600/70 font-bold gap-1.5 px-3.5 shadow-sm"
+                  title="Abrir la Gestión de Paramétricos Globales de Todos los Pisos"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" /> Gestión Global de Paramétricos
+                </Button>
+              )}
+            </div>
 
             <Button
               size="sm"
